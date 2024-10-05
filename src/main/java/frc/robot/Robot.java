@@ -1,15 +1,34 @@
 
 package frc.robot;
 
-import frc.robot.subsystems.drivetrain.SwerveModule;
-import frc.robot.subsystems.drivetrain.SwerveModuleKrakenNeo;
+
+import edu.wpi.first.wpilibj.DriverStation;
 import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import org.littletonrobotics.urcl.URCL;
 
 public class Robot extends LoggedRobot
 {
-    SwerveModuleKrakenNeo module = new SwerveModuleKrakenNeo(1,2,3, SwerveModule.FrontLeft);
+    public Robot()
+    {
+        super(.2);
+    }
     @Override
     public void robotInit() {
+        Logger.recordMetadata("ProjectName", "DJHooves Enhance");
+        DriverStation.silenceJoystickConnectionWarning(true);
+
+        if (isReal()) {
+            Logger.addDataReceiver(new NT4Publisher());
+            Logger.addDataReceiver(new WPILOGWriter());
+        } else {
+            Logger.addDataReceiver(new NT4Publisher());
+        }
+        Logger.registerURCL(URCL.startExternal());
+        Logger.start();
+
     }
     
     
