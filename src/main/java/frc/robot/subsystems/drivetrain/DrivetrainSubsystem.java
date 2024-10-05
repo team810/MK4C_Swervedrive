@@ -4,7 +4,6 @@ import frc.robot.lib.AdvancedSubsystem;
 
 public class DrivetrainSubsystem extends AdvancedSubsystem {
     private static final DrivetrainSubsystem INSTANCE = new DrivetrainSubsystem();
-
     public DrivetrainSubsystem() {
 
     }

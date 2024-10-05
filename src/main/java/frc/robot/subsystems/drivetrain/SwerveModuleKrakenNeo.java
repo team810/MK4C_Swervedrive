@@ -1,10 +1,13 @@
 package frc.robot.subsystems.drivetrain;
 
 import com.ctre.phoenix6.configs.*;
+import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.revrobotics.CANSparkLowLevel;
 import com.revrobotics.CANSparkMax;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 
 public class SwerveModuleKrakenNeo implements SwerveModuleIO {
@@ -12,22 +15,27 @@ public class SwerveModuleKrakenNeo implements SwerveModuleIO {
     private final TalonFXConfiguration driveConfig;
     private final MotionMagicConfigs motionMagicConfigs;
 
-
     private final CANSparkMax steerMotor;
     private final CANcoder encoder;
     private final SwerveModule module;
 
+    private SwerveModuleState targetState;
+    private SwerveModuleState prevState;
+    private SwerveModuleState currentState;
+    private SwerveModulePosition modulePosition;
+
     public SwerveModuleKrakenNeo(int driveID, int steerID, int encoderID, SwerveModule module) {
-        driveMotor = new TalonFX(driveID);
+        driveMotor = new TalonFX(driveID, "Drivetrain");
         driveConfig = new TalonFXConfiguration();
 
         motionMagicConfigs = new MotionMagicConfigs();
-        motionMagicConfigs.MotionMagicCruiseVelocity =
+        motionMagicConfigs.MotionMagicCruiseVelocity = DrivetrainConstants.MAX_RPM_FOC;
 
         CurrentLimitsConfigs currentLimitConfig = new CurrentLimitsConfigs();
         VoltageConfigs voltageConfigs = new VoltageConfigs();
         Slot0Configs velocityControllerConfig = new Slot0Configs();
         FeedbackConfigs feedbackConfig = new FeedbackConfigs();
+        AudioConfigs audioConfig = new AudioConfigs();
 
         currentLimitConfig.StatorCurrentLimitEnable = true;
         currentLimitConfig.SupplyCurrentLimitEnable = true;
@@ -44,11 +52,17 @@ public class SwerveModuleKrakenNeo implements SwerveModuleIO {
         velocityControllerConfig.kG = 0;
 
         feedbackConfig.SensorToMechanismRatio = DrivetrainConstants.DRIVE_GEAR_RATIO;
+        feedbackConfig.FeedbackSensorSource = FeedbackSensorSourceValue.RotorSensor;
 
-        driveConfig.withCurrentLimits(currentLimitConfig);
-        driveConfig.withVoltage(voltageConfigs);
-        driveConfig.withSlot0(velocityControllerConfig);
-        driveConfig.withFeedback(feedbackConfig);
+        audioConfig.BeepOnConfig = true;
+        audioConfig.AllowMusicDurDisable = true;
+        audioConfig.BeepOnBoot = true;
+
+        driveConfig.CurrentLimits = currentLimitConfig;
+        driveConfig.Voltage = voltageConfigs;
+        driveConfig.Slot0 = velocityControllerConfig;
+        driveConfig.Feedback = feedbackConfig;
+        driveConfig.Audio = audioConfig;
 
         driveMotor.getConfigurator().apply(driveConfig);
 
@@ -59,23 +73,27 @@ public class SwerveModuleKrakenNeo implements SwerveModuleIO {
         steerMotor.enableVoltageCompensation(12);
         this.module = module;
 
-        encoder = new CANcoder(encoderID);
+        encoder = new CANcoder(encoderID, "Drivetrain");
+
+        targetState = new SwerveModuleState();
+        prevState = new SwerveModuleState();
+        currentState = new SwerveModuleState();
     }
     @Override
     public void readPeriodic() {
-
+        currentState = new SwerveModuleState();
     }
 
     @Override
     public void writePeriodic() {
-
+        MotionMagicVelocityVoltage driveControl = new MotionMagicVelocityVoltage(50);
     }
 
     @Override
     public void setTargetState(SwerveModuleState targetState) {
-
+        this.prevState = this.targetState;
+        this.targetState = targetState;
     }
-
     @Override
     public SwerveModuleState getTargetState() {
         return null;
@@ -84,5 +102,10 @@ public class SwerveModuleKrakenNeo implements SwerveModuleIO {
     @Override
     public SwerveModuleState getCurrentState() {
         return null;
+    }
+
+    @Override
+    public SwerveModulePosition getModulePosition() {
+        return modulePosition;
     }
 }
