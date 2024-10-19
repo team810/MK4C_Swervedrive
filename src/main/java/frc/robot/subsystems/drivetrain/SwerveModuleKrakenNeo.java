@@ -1,145 +1,181 @@
 package frc.robot.subsystems.drivetrain;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.*;
-import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
+import com.ctre.phoenix6.Utils;
+import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.AbsoluteSensorRangeValue;
-import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
-import com.ctre.phoenix6.signals.SensorDirectionValue;
+import com.revrobotics.CANSparkBase;
 import com.revrobotics.CANSparkLowLevel;
 import com.revrobotics.CANSparkMax;
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
+import org.littletonrobotics.junction.Logger;
 
 public class SwerveModuleKrakenNeo implements SwerveModuleIO {
+    // Drive Motor
     private final TalonFX driveMotor;
+    private VelocityVoltage driveControl;
 
+    private final StatusSignal<Double> drivePosition; // R
+    private final StatusSignal<Double> driveVelocity; // R/S
+    private final StatusSignal<Double> driveAcceleration; //R/S^2
+    private final StatusSignal<Double> driveTorqueCurrent;
+
+    private final StatusSignal<Double> driveCurrentDraw;
+    private final StatusSignal<Double> driveTemperature;
+    private final StatusSignal<Double> driveVoltage;
+
+    // Steer Motor
     private final CANSparkMax steerMotor;
     private final PIDController steerController;
+
+    // Encoder
     private final CANcoder encoder;
 
-    private final StatusSignal<Double> drivePositionSignal; // Drive motor position updated every 20 ms
-    private final StatusSignal<Double> driveVelocitySignal; // Drive motor velocity updated ever 20 ms
-    private final StatusSignal<Double> driveAccelerationSignal; // Drive motor acceleration updated every 20 ms
-    private final StatusSignal<Double> wheelAngle; // -.5 to .5
-    private final StatusSignal<Double> driveTempSignal; // Motor Temperature updated ever 100 ms
-    private final StatusSignal<Double> driveVoltageSignal; // Applied Voltage updated every 100ms
-    private final StatusSignal<Double> driveCurrentSignal; // Current draw updated every 100 ms
+    private final StatusSignal<Double> steerAngle;
+    private final StatusSignal<Double> steerVelocity;
 
-    private final SwerveModule module;
-
-    private SwerveModuleState targetState;
-    private SwerveModuleState prevState;
+    // General
     private SwerveModuleState currentState;
-    private SwerveModulePosition modulePosition;
+    private SwerveModuleState targetState;
+    private final SwerveModule module;
+    private final String moduleName;
 
-    public SwerveModuleKrakenNeo(int driveID, int steerID, int encoderID, SwerveModule module) {
-        driveMotor = new TalonFX(driveID, "Drivetrain");
-        TalonFXConfiguration driveConfig = new TalonFXConfiguration();
+    public SwerveModuleKrakenNeo(int driveID, int steerID, int encoderID, SwerveModule module)
+    {
+        // Drive motor configuration
+        driveMotor = new TalonFX(driveID, DrivetrainConstants.CAN_BUS);
+        driveMotor.getConfigurator().apply(DrivetrainConstants.getDriveConfig(module));
 
-        drivePositionSignal = driveMotor.getPosition();
-        driveVelocitySignal = driveMotor.getVelocity();
-        driveAccelerationSignal = driveMotor.getAcceleration();
+        drivePosition = driveMotor.getPosition();
+        driveVelocity = driveMotor.getVelocity();
+        driveAcceleration = driveMotor.getAcceleration();
+        driveTorqueCurrent = driveMotor.getTorqueCurrent();
 
-        driveTempSignal = driveMotor.getDeviceTemp();
-        driveVoltageSignal = driveMotor.getSupplyVoltage();
-        driveCurrentSignal = driveMotor.getSupplyCurrent();
+        BaseStatusSignal.setUpdateFrequencyForAll(100, drivePosition,driveVelocity,driveAcceleration,driveTorqueCurrent);
 
-        MotionMagicConfigs motionMagicConfigs = new MotionMagicConfigs();
-        motionMagicConfigs.MotionMagicCruiseVelocity = DrivetrainConstants.MAX_RPM_FOC;
+        driveCurrentDraw = driveMotor.getSupplyCurrent();
+        driveTemperature = driveMotor.getDeviceTemp();
+        driveVoltage = driveMotor.getSupplyVoltage();
 
-        CurrentLimitsConfigs currentLimitConfig = new CurrentLimitsConfigs();
-        VoltageConfigs voltageConfigs = new VoltageConfigs();
-        Slot0Configs velocityControllerConfig = new Slot0Configs();
-        FeedbackConfigs feedbackConfig = new FeedbackConfigs();
-        AudioConfigs audioConfig = new AudioConfigs();
+        BaseStatusSignal.setUpdateFrequencyForAll(10, driveCurrentDraw,driveVelocity,driveAcceleration);
 
-        currentLimitConfig.StatorCurrentLimitEnable = true;
-        currentLimitConfig.SupplyCurrentLimitEnable = true;
-        currentLimitConfig.StatorCurrentLimit = 10;
+        driveMotor.optimizeBusUtilization();
 
-        voltageConfigs.PeakForwardVoltage = 12;
-        voltageConfigs.PeakReverseVoltage = -12;
-
-        velocityControllerConfig.kP = 0;
-        velocityControllerConfig.kI = 0;
-        velocityControllerConfig.kD = 0;
-        velocityControllerConfig.kV = 0;
-        velocityControllerConfig.kA = 0;
-        velocityControllerConfig.kG = 0;
-
-        feedbackConfig.FeedbackSensorSource = FeedbackSensorSourceValue.RotorSensor;
-
-        audioConfig.BeepOnConfig = true;
-        audioConfig.AllowMusicDurDisable = true;
-        audioConfig.BeepOnBoot = true;
-
-        driveConfig.CurrentLimits = currentLimitConfig;
-        driveConfig.Voltage = voltageConfigs;
-        driveConfig.Slot0 = velocityControllerConfig;
-        driveConfig.Feedback = feedbackConfig;
-        driveConfig.Audio = audioConfig;
-        driveConfig.MotionMagic = motionMagicConfigs;
-
-        driveMotor.getConfigurator().apply(driveConfig);
-
+        // Steer motor configuration
         steerMotor = new CANSparkMax(steerID, CANSparkLowLevel.MotorType.kBrushless);
-
-        steerMotor.setSmartCurrentLimit(20);
-        steerMotor.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        steerMotor.setSmartCurrentLimit(40);
         steerMotor.enableVoltageCompensation(12);
+        steerMotor.setIdleMode(CANSparkBase.IdleMode.kBrake);
+        steerMotor.clearFaults();
+
+        steerController = new PIDController(0,0,0);
+        steerController.enableContinuousInput(-Math.PI, Math.PI);
+        steerController.setTolerance(Units.degreesToRadians(1));
+
+        // Encoder configuration
+        encoder = new CANcoder(encoderID, DrivetrainConstants.CAN_BUS);
+        encoder.getConfigurator().apply(DrivetrainConstants.getEncoderConfig());
+
+        steerAngle = encoder.getAbsolutePosition();
+        steerVelocity = encoder.getVelocity();
+
+        BaseStatusSignal.setUpdateFrequencyForAll(100, steerAngle,steerVelocity);
+
+        // General Configuration
+        currentState = new SwerveModuleState();
         this.module = module;
 
-        steerController = new PIDController(0,0,0); // Measurement and Setpoint are in radians -PI to PI.
-        steerController.setP(0); // Kp = output/error
-        steerController.enableContinuousInput(-Math.PI, Math.PI);
-        steerController.setTolerance((2 * Math.PI) * .01); // 1 percent of a ration error
-
-        encoder = new CANcoder(encoderID, "Drivetrain");
-        CANcoderConfiguration config = new CANcoderConfiguration();
-        config.MagnetSensor.AbsoluteSensorRange = AbsoluteSensorRangeValue.Signed_PlusMinusHalf;
-        config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
-        encoder.getConfigurator().apply(config);
-        wheelAngle = encoder.getAbsolutePosition();
-
-        targetState = new SwerveModuleState();
-        prevState = new SwerveModuleState();
-        currentState = new SwerveModuleState();
+        switch (this.module)
+        {
+            case FrontLeft -> {
+                moduleName = "FrontLeft";
+            }
+            case FrontRight -> {
+                moduleName = "FrontRight";
+            }
+            case BackLeft -> {
+                moduleName = "BackLeft";
+            }
+            case BackRight -> {
+                moduleName = "BackRight";
+            }
+            default -> {
+                moduleName = "Unknown";
+            }
+        }
     }
+
     @Override
     public void readPeriodic() {
+        double velocity = BaseStatusSignal.getLatencyCompensatedValue(driveVelocity,driveAcceleration);
+        double acceleration = driveAcceleration.getValue();
+        velocity = velocity / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        acceleration = acceleration / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        velocity = velocity * Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI;
+        acceleration = acceleration * Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI;
+        Rotation2d angle = Rotation2d.fromRotations(BaseStatusSignal.getLatencyCompensatedValue(steerAngle,steerVelocity));
+
+        currentState = new SwerveModuleState(
+                velocity,
+                angle
+        );
+
+        // General Logging
+        Logger.recordOutput("Drivetrain/" + moduleName + "/CurrentState", currentState);
+        Logger.recordOutput("Drivetrain/" + moduleName + "/TargetState", targetState);
+        // Drive Motor Logging
+        Logger.recordOutput("Drivetrain/" + moduleName + "Drivetrain/Position",getModulePosition(Utils.getCurrentTimeSeconds()));
+        Logger.recordOutput("Drivetrain/" + moduleName + "/DriveMotor/Velocity", velocity);
+        Logger.recordOutput("Drivetrain/" + moduleName + "/DriveMotor/Acceleration", acceleration);
+
+        DCMotor.getKrakenX60Foc(1).getTorque(driveMotor.getTorqueCurrent().getValue());
 
     }
 
     @Override
     public void writePeriodic() {
-        double targetVelocity = (targetState.speedMetersPerSecond/Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO;
-        targetVelocity = MathUtil.clamp(targetVelocity, -DrivetrainConstants.MAX_RPM_FOC, DrivetrainConstants.MAX_RPM_FOC);
-        MotionMagicVelocityVoltage control = new MotionMagicVelocityVoltage(targetVelocity);
+
     }
 
     @Override
     public void setTargetState(SwerveModuleState targetState) {
-        this.prevState = this.targetState;
         this.targetState = targetState;
+        this.targetState = SwerveModuleState.optimize(targetState, getCurrentState().angle);
     }
-    @Override
-    public SwerveModuleState getTargetState() {
-        return targetState;
-    }
-
     @Override
     public SwerveModuleState getCurrentState() {
         return currentState;
     }
 
+    private double calculatePosition(double timestamp) {
+        // First step is to solve for velocity at the time when the acceleration is taken using v=vo+at
+        double accelerationTimestamp = driveAcceleration.getAllTimestamps().getCANivoreTimestamp().getTime();
+        double velocityTimestamp = driveVelocity.getAllTimestamps().getCANivoreTimestamp().getTime();
+        double positionTimestamp = drivePosition.getAllTimestamps().getCANivoreTimestamp().getTime();
+
+        double velocityAtAcceleration = driveVelocity.getValue() + driveAcceleration.getValue() * (accelerationTimestamp - velocityTimestamp);
+        double xAccelerationTimeDif = accelerationTimestamp - positionTimestamp;
+        double xAtAccelerationTime = drivePosition.getValue() + (velocityAtAcceleration * xAccelerationTimeDif) + (.5 * driveAcceleration.getValue() * xAccelerationTimeDif);
+        double finalTimestamp = timestamp - accelerationTimestamp;
+        double position = xAtAccelerationTime + (velocityAtAcceleration * finalTimestamp) + (.5 * driveAcceleration.getValue() * finalTimestamp);
+
+        position = position / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        position = position * (Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI); // Position is now in meters
+
+        return position;
+    }
+
     @Override
-    public SwerveModulePosition getModulePosition() {
-        return modulePosition;
+    public SwerveModulePosition getModulePosition(double timestamp) {
+        double theta = BaseStatusSignal.getLatencyCompensatedValue(steerAngle, steerVelocity);
+
+        return new SwerveModulePosition(calculatePosition(timestamp),Rotation2d.fromDegrees(theta));
     }
 }
