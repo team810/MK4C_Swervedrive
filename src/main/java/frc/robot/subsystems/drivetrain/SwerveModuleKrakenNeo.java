@@ -154,23 +154,7 @@ public class SwerveModuleKrakenNeo implements SwerveModuleIO {
         return currentState;
     }
 
-    private double calculatePosition(double timestamp) {
-        // First step is to solve for velocity at the time when the acceleration is taken using v=vo+at
-        double accelerationTimestamp = driveAcceleration.getAllTimestamps().getCANivoreTimestamp().getTime();
-        double velocityTimestamp = driveVelocity.getAllTimestamps().getCANivoreTimestamp().getTime();
-        double positionTimestamp = drivePosition.getAllTimestamps().getCANivoreTimestamp().getTime();
 
-        double velocityAtAcceleration = driveVelocity.getValue() + driveAcceleration.getValue() * (accelerationTimestamp - velocityTimestamp);
-        double xAccelerationTimeDif = accelerationTimestamp - positionTimestamp;
-        double xAtAccelerationTime = drivePosition.getValue() + (velocityAtAcceleration * xAccelerationTimeDif) + (.5 * driveAcceleration.getValue() * xAccelerationTimeDif);
-        double finalTimestamp = timestamp - accelerationTimestamp;
-        double position = xAtAccelerationTime + (velocityAtAcceleration * finalTimestamp) + (.5 * driveAcceleration.getValue() * finalTimestamp);
-
-        position = position / DrivetrainConstants.DRIVE_GEAR_RATIO;
-        position = position * (Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI); // Position is now in meters
-
-        return position;
-    }
 
     @Override
     public SwerveModulePosition getModulePosition(double timestamp) {
