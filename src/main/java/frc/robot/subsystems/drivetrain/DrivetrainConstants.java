@@ -7,7 +7,6 @@ import com.ctre.phoenix6.signals.SensorDirectionValue;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.util.Units;
-import frc.robot.subsystems.drivetrain.swervemodule.SwerveModuleID;
 
 public class DrivetrainConstants {
     public final static String CAN_BUS = "drivetrain";

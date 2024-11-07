@@ -1,4 +1,4 @@
-package frc.robot.subsystems.drivetrain.swervemodule;
+package frc.robot.subsystems.drivetrain;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
@@ -17,7 +17,6 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Robot;
-import frc.robot.subsystems.drivetrain.DrivetrainConstants;
 import org.littletonrobotics.junction.Logger;
 
 public class KrakenNeoModule implements SwerveModuleIO{
@@ -59,7 +58,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
     public KrakenNeoModule(SwerveModuleID id)
     {
         this.id = id;
-        this.idString = id.toString();
+        this.idString = this.id.toString();
 
         driveMotor = new TalonFX(DrivetrainConstants.getDriveID(id),DrivetrainConstants.CAN_BUS);
         driveMotor.getConfigurator().apply(DrivetrainConstants.getDriveConfig(id));
@@ -91,7 +90,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
         encoder.getConfigurator().apply(DrivetrainConstants.getEncoderConfig());
         encoderSimState = encoder.getSimState();
 
-        thetaSignal = encoder.getPosition();
+        thetaSignal = encoder.getAbsolutePosition();
         omegaSignal = encoder.getVelocity();
 
         steerController = new PIDController(
