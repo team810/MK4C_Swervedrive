@@ -2,6 +2,7 @@
 package frc.robot;
 
 
+import com.ctre.phoenix6.Orchestra;
 import com.revrobotics.REVPhysicsSim;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -14,15 +15,15 @@ import org.littletonrobotics.urcl.URCL;
 
 public class Robot extends LoggedRobot
 {
+    public static final double PERIOD = .025;
     private final DrivetrainSubsystem drivetrain;
 
+    private final Orchestra orchestra = new Orchestra();
 
     public Robot()
     {
-        super(.25);
-
-        drivetrain = new DrivetrainSubsystem();
-
+        super(defaultPeriodSecs);
+        
         Logger.recordMetadata("ProjectName", "Swerve Drivetrain");
         DriverStation.silenceJoystickConnectionWarning(true);
 
@@ -35,7 +36,12 @@ public class Robot extends LoggedRobot
         Logger.registerURCL(URCL.startExternal());
         Logger.start();
 
-        CommandScheduler.getInstance().setPeriod(.02);
+        CommandScheduler.getInstance().setPeriod(.015);
+
+        // Init for subsystems
+        drivetrain = new DrivetrainSubsystem();
+
+
     }
     @Override
     public void robotInit() {
@@ -50,6 +56,11 @@ public class Robot extends LoggedRobot
     }
 
     public void readPeriodic() {
+        if (Robot.isSimulation())
+        {
+            drivetrain.simulatePeriodic();
+        }
+
         drivetrain.readPeriodic();
     }
 
@@ -87,7 +98,6 @@ public class Robot extends LoggedRobot
 
     @Override
     public void simulationPeriodic() {
-
         REVPhysicsSim.getInstance().run();
     }
 }
