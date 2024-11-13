@@ -83,7 +83,6 @@ public interface SwerveModuleIO {
      */
     public double getSteerAppliedVoltage();
 
-
-
+    public SwerveModuleState getCurrentState();
 
 }

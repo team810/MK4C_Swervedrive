@@ -2,49 +2,46 @@
 package frc.robot;
 
 
-import com.ctre.phoenix6.Orchestra;
 import com.revrobotics.REVPhysicsSim;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.IO.Controls;
+import frc.robot.IO.IO;
+import frc.robot.commands.TelopDriveCommand;
 import frc.robot.subsystems.drivetrain.DrivetrainSubsystem;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
-import org.littletonrobotics.junction.wpilog.WPILOGWriter;
-import org.littletonrobotics.urcl.URCL;
 
 public class Robot extends LoggedRobot
 {
     public static final double PERIOD = .025;
-    private final DrivetrainSubsystem drivetrain;
-
-    private final Orchestra orchestra = new Orchestra();
 
     public Robot()
     {
-        super(defaultPeriodSecs);
+        super(PERIOD);
         
         Logger.recordMetadata("ProjectName", "Swerve Drivetrain");
         DriverStation.silenceJoystickConnectionWarning(true);
 
         if (isReal()) {
             Logger.addDataReceiver(new NT4Publisher());
-            Logger.addDataReceiver(new WPILOGWriter());
+//            Logger.addDataReceiver(new WPILOGWriter());
         } else {
             Logger.addDataReceiver(new NT4Publisher());
         }
-        Logger.registerURCL(URCL.startExternal());
         Logger.start();
 
         CommandScheduler.getInstance().setPeriod(.015);
+        DrivetrainSubsystem.getInstance();
 
-        // Init for subsystems
-        drivetrain = new DrivetrainSubsystem();
-
-
+        IO.Initialize(IO.PrimaryDriverProfiles.Leo,IO.SecondaryDriverProfiles.KnollController);
     }
     @Override
     public void robotInit() {
+        new Trigger(IO.getButtonValue(Controls.resetGyro)).onTrue(new InstantCommand(() -> DrivetrainSubsystem.getInstance().resetGyro()));
     }
     
     
@@ -56,16 +53,11 @@ public class Robot extends LoggedRobot
     }
 
     public void readPeriodic() {
-        if (Robot.isSimulation())
-        {
-            drivetrain.simulatePeriodic();
-        }
-
-        drivetrain.readPeriodic();
+        DrivetrainSubsystem.getInstance().readPeriodic();
     }
 
     public void writePeriodic() {
-        drivetrain.writePeriodic();
+        DrivetrainSubsystem.getInstance().writePeriodic();
     }
     
     @Override
@@ -77,7 +69,9 @@ public class Robot extends LoggedRobot
     
     
     @Override
-    public void teleopInit() {}
+    public void teleopInit() {
+        CommandScheduler.getInstance().schedule(new TelopDriveCommand());
+    }
     
     
     @Override
@@ -93,7 +87,6 @@ public class Robot extends LoggedRobot
 
     @Override
     public void simulationInit() {
-
     }
 
     @Override

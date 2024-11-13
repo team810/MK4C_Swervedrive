@@ -8,10 +8,12 @@ import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.sim.CANcoderSimState;
 import com.ctre.phoenix6.sim.TalonFXSimState;
+import com.revrobotics.CANSparkBase;
 import com.revrobotics.CANSparkLowLevel;
 import com.revrobotics.CANSparkMax;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
@@ -19,6 +21,7 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Robot;
 import org.littletonrobotics.junction.Logger;
 
+// Requires Pro
 public class KrakenNeoModule implements SwerveModuleIO{
     private final SwerveModuleID id;
     private final String idString;
@@ -63,7 +66,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
         driveMotor = new TalonFX(DrivetrainConstants.getDriveID(id),DrivetrainConstants.CAN_BUS);
         driveMotor.getConfigurator().apply(DrivetrainConstants.getDriveConfig(id));
         driveSimState = driveMotor.getSimState();
-        driveMotorSim = new DCMotorSim(DCMotor.getKrakenX60Foc(1),1,.00382);
+        driveMotorSim = new DCMotorSim(DCMotor.getKrakenX60Foc(1),1,DrivetrainConstants.MOMENT_OF_INTRA_DRIVE);
 
         positionSignal = driveMotor.getPosition();
         velocitySignal = driveMotor.getVelocity();
@@ -72,8 +75,11 @@ public class KrakenNeoModule implements SwerveModuleIO{
         driveAppliedVoltageSignal = driveMotor.getMotorVoltage();
 
         steerMotor = new CANSparkMax(DrivetrainConstants.getSteerID(id), CANSparkLowLevel.MotorType.kBrushless);
+        steerMotor.restoreFactoryDefaults();
+        steerMotor.clearFaults();
         steerMotor.setSmartCurrentLimit(20); // The steer motor does not really need that much torque, and it is completely fine to run these motors at 20 amps,
         steerMotor.enableVoltageCompensation(12);
+        steerMotor.setIdleMode(CANSparkBase.IdleMode.kCoast);
 
         steerAppliedVoltage = 0;
 
@@ -87,7 +93,6 @@ public class KrakenNeoModule implements SwerveModuleIO{
         steerMotor.setPeriodicFramePeriod(CANSparkLowLevel.PeriodicFrame.kStatus6,1000);
 
         encoder = new CANcoder(DrivetrainConstants.getEncoderID(id), DrivetrainConstants.CAN_BUS);
-        encoder.getConfigurator().apply(DrivetrainConstants.getEncoderConfig());
         encoderSimState = encoder.getSimState();
 
         thetaSignal = encoder.getAbsolutePosition();
@@ -98,6 +103,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
                 DrivetrainConstants.STEER_KI,
                 DrivetrainConstants.STEER_KD
         );
+        steerController.enableContinuousInput(-Math.PI, Math.PI);
 
         BaseStatusSignal.setUpdateFrequencyForAll(100,positionSignal,velocitySignal,accelerationSignal,currentSignal,driveAppliedVoltageSignal,thetaSignal,omegaSignal);
     }
@@ -126,7 +132,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
         velocity = (velocity/(DrivetrainConstants.WHEEL_DIAMETER_METERS * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO; // converts mps to rotations of motor per second
         acceleration = (velocity - ((getVelocity(Utils.getCurrentTimeSeconds())/(DrivetrainConstants.WHEEL_DIAMETER_METERS * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO)) / Robot.PERIOD;
 
-        driveMotorControl = new VelocityVoltage(velocity,acceleration,true,0,0,false,false,false);
+        driveMotorControl = new VelocityVoltage(velocity,acceleration,false,0,0,false,false,false);
         driveMotor.setControl(driveMotorControl);
 
         // Control over steer motor
@@ -158,6 +164,9 @@ public class KrakenNeoModule implements SwerveModuleIO{
     }
 
     private void updateDriveSignals(double timestamp) {
+        position = 0;
+        velocity = 0;
+        acceleration = 0;
         double accelerationTimestamp = accelerationSignal.getAllTimestamps().getCANivoreTimestamp().getTime();
         double velocityTimestamp = velocitySignal.getAllTimestamps().getCANivoreTimestamp().getTime();
         double positionTimestamp = positionSignal.getAllTimestamps().getCANivoreTimestamp().getTime();
@@ -235,7 +244,9 @@ public class KrakenNeoModule implements SwerveModuleIO{
 
     @Override
     public double getTheta() {
-        theta = BaseStatusSignal.getLatencyCompensatedValue(thetaSignal,omegaSignal);
+
+        thetaSignal.refresh();
+        theta = thetaSignal.getValue();
         theta = theta * 2 * Math.PI; // To convert from rotations to radians
         return theta;
     }
@@ -250,6 +261,11 @@ public class KrakenNeoModule implements SwerveModuleIO{
     @Override
     public double getSteerAppliedVoltage() {
         return steerAppliedVoltage;
+    }
+
+    @Override
+    public SwerveModuleState getCurrentState() {
+        return new SwerveModuleState(getVelocity(), new Rotation2d(getTheta()));
     }
 
     @Override

@@ -3,6 +3,7 @@ package frc.robot.subsystems.drivetrain;
 import com.ctre.phoenix6.configs.*;
 import com.ctre.phoenix6.signals.AbsoluteSensorRangeValue;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -32,7 +33,7 @@ public class DrivetrainConstants {
     public static final double WHEEL_BASE_WIDTH = Units.inchesToMeters(24); // measure of FL wheel to FR wheel or BL wheel to BR wheel
     public static final double WHEEL_BASE_LENGTH = Units.inchesToMeters(24); // measure of FL wheel to BL wheel// or FR wheel to BR wheel
 
-    public static final double STEER_KP = .01; // voltage/radians proportion of volts to error in radians
+    public static final double STEER_KP = 5; // voltage/radians proportion of volts to error in radians
     public static final double STEER_KI = 0;
     public static  final double STEER_KD = 0;
 
@@ -44,8 +45,8 @@ public class DrivetrainConstants {
     public static final double DRIVE_GEAR_RATIO = 5.36;
     public static final double WHEEL_DIAMETER_INCHES = 4.0;
     public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(WHEEL_DIAMETER_INCHES);
-    public static final double MAX_VELOCITY = (MAX_RPM_FOC/60) * WHEEL_DIAMETER_METERS * Math.PI; // Meters per second
-    public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY / (2 * WHEEL_BASE_LENGTH * Math.PI); // Rotations per second
+    public static final double MAX_VELOCITY = 5.5; // Meters per second
+    public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY * (2 * WHEEL_BASE_LENGTH * Math.PI); // Rotations per second
     public static final double MAX_ACCELERATION = 9.84; // Meters per second squared
     public static final double MAX_ANGULAR_ACCELERATION = MAX_ACCELERATION / (2 * WHEEL_BASE_LENGTH * Math.PI); // Rotations per second squared
 
@@ -134,6 +135,8 @@ public class DrivetrainConstants {
         voltageConfigs.PeakReverseVoltage = -12;
         config.Voltage = voltageConfigs;
 
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+
         Slot0Configs velocityControllerConfig = new Slot0Configs();
         switch (module)
         {
@@ -183,24 +186,24 @@ public class DrivetrainConstants {
         config.MotionMagic = motionMagicConfigs;
 
         AudioConfigs audioConfig = new AudioConfigs();
-        audioConfig.BeepOnConfig = true;
+        audioConfig.BeepOnConfig = false;
         audioConfig.AllowMusicDurDisable = true;
-        audioConfig.BeepOnBoot = true;
+        audioConfig.BeepOnBoot = false;
         config.Audio = audioConfig;
 
         return config;
     }
 
-    public static CANcoderConfiguration getEncoderConfig() {
-        CANcoderConfiguration config = new CANcoderConfiguration();
+    public static CANcoderConfiguration getEncoderConfig(CANcoderConfiguration currentConfig) {
 
-        MagnetSensorConfigs magnetSensorConfigs = new MagnetSensorConfigs();
-        magnetSensorConfigs.AbsoluteSensorRange = AbsoluteSensorRangeValue.Signed_PlusMinusHalf;
-        magnetSensorConfigs.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
+        currentConfig.MagnetSensor.AbsoluteSensorRange = AbsoluteSensorRangeValue.Signed_PlusMinusHalf;
+        currentConfig.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
 
-        config.MagnetSensor = magnetSensorConfigs;
+        return currentConfig;
+    }
 
-        config.FutureProofConfigs = true;
+    public static Pigeon2Configuration getGyroConfig() {
+        Pigeon2Configuration config = new Pigeon2Configuration();
 
         return config;
     }
