@@ -21,7 +21,7 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Robot;
 import org.littletonrobotics.junction.Logger;
 
-// Requires Pro
+// Current does not require pro
 public class KrakenNeoModule implements SwerveModuleIO{
     private final SwerveModuleID id;
     private final String idString;

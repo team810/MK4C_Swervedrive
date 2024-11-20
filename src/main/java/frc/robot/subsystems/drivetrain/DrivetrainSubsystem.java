@@ -1,5 +1,6 @@
 package frc.robot.subsystems.drivetrain;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.hardware.Pigeon2;
@@ -11,6 +12,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.lib.AdvancedSubsystem;
 import org.littletonrobotics.junction.Logger;
 
@@ -34,6 +36,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
     private final SwerveDriveKinematics kinematics;
     private final SwerveDrivePoseEstimator odometry;
 
+    // Any speeds that come in are either going to be robot relative or fully filed relative
     private ChassisSpeeds targetSpeed;
 
     private DrivetrainSubsystem() {
@@ -62,26 +65,23 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         );
 
         targetSpeed = new ChassisSpeeds(0,0,0);
+
     }
 
     @Override
     public void readPeriodic() {
+        BaseStatusSignal.refreshAll(thetaSignal);
         frontLeft.readPeriodic();
         frontRight.readPeriodic();
         backLeft.readPeriodic();
         backRight.readPeriodic();
 
-        double currentTime = Utils.getCurrentTimeSeconds();
+        updateModulePositions();
 
-        frontLeftPosition = new SwerveModulePosition(frontLeft.getPosition(currentTime),new Rotation2d(frontLeft.getTheta()));
-        frontRightPosition = new SwerveModulePosition(frontRight.getPosition(currentTime),new Rotation2d(frontRight.getTheta()));
-        backLeftPosition = new SwerveModulePosition(backLeft.getPosition(currentTime),new Rotation2d(backLeft.getTheta()));
-        backRightPosition = new SwerveModulePosition(backRight.getPosition(currentTime), new Rotation2d(backRight.getTheta()));
-
-        thetaSignal.refresh();
         odometry.update(Rotation2d.fromDegrees(thetaSignal.getValue()), new SwerveModulePosition[]{frontLeftPosition, frontRightPosition, backLeftPosition, backRightPosition});
-        Logger.recordOutput("CurrentState", frontLeft.getCurrentState(), frontRight.getCurrentState(), backLeft.getCurrentState(), backRight.getCurrentState());
-        Logger.recordOutput("Rotation",getCurrentRotation());
+
+        Logger.recordOutput("Drivetrain/Current/CurrentState", frontLeft.getCurrentState(), frontRight.getCurrentState(), backLeft.getCurrentState(), backRight.getCurrentState());
+        Logger.recordOutput("Drivetrain/Current/CurrentPose", odometry.getEstimatedPosition());
     }
 
     @Override
@@ -102,21 +102,68 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         backLeft.writePeriodic();
         backRight.writePeriodic();
 
-        Logger.recordOutput("Drivetrain/TargetSpeeds",targetSpeed);
+        Logger.recordOutput("Drivetrain/Applied/Speeds",targetSpeed);
+        Logger.recordOutput("Drivetrain/Applied/States",states);
     }
 
-    public Rotation2d getCurrentRotation()
-    {
-        thetaSignal.refresh();
-        return Rotation2d.fromDegrees(thetaSignal.getValue());
+
+
+    @Override
+    public void simulationPeriodic() {
+        frontLeft.moduleSim();
+        frontRight.moduleSim();
+        backLeft.moduleSim();
+        backRight.moduleSim();
     }
+
     public void setTargetSpeed(ChassisSpeeds speed) {
         this.targetSpeed = speed;
     }
-
-    public void resetGyro()
+    public Pose2d getPose()
     {
-        gyro.reset();
+        return odometry.getEstimatedPosition();
+    }
+
+    public void resetGyro() {
+        if (DriverStation.getAlliance().isPresent())
+        {
+            if (DriverStation.getAlliance().get() == DriverStation.Alliance.Red)
+            {
+                resetPose(new Pose2d(getPose().getX(), getPose().getY(), Rotation2d.fromRadians(-Math.PI)));
+            }else{
+                resetPose(new Pose2d(getPose().getX(), getPose().getY(), Rotation2d.fromRadians(0)));
+            }
+        }else{
+            resetPose(new Pose2d(getPose().getX(), getPose().getY(), Rotation2d.fromRadians(0)));
+        }
+    }
+
+    public void switchAlliances() {
+        if (DriverStation.getAlliance().isPresent())
+        {
+            if (DriverStation.getAlliance().get() == DriverStation.Alliance.Red)
+            {
+                resetPose(new Pose2d(getPose().getX(), getPose().getY(), gyro.getRotation2d().minus(Rotation2d.fromRadians(Math.PI))));
+            }else{
+                resetPose(new Pose2d(getPose().getX(), getPose().getY(), gyro.getRotation2d()));
+            }
+        }else{
+            resetPose(new Pose2d(getPose().getX(), getPose().getY(), gyro.getRotation2d()));
+        }
+    }
+    public void resetPose(Pose2d pose) {
+        updateModulePositions();
+
+        odometry.resetPosition(gyro.getRotation2d(), new SwerveModulePosition[]{frontLeftPosition, frontRightPosition, backLeftPosition, backRightPosition}, pose);
+    }
+
+    private void updateModulePositions() {
+        double currentTime = Utils.getCurrentTimeSeconds();
+
+        frontLeftPosition = new SwerveModulePosition(frontLeft.getPosition(currentTime),new Rotation2d(frontLeft.getTheta()));
+        frontRightPosition = new SwerveModulePosition(frontRight.getPosition(currentTime),new Rotation2d(frontRight.getTheta()));
+        backLeftPosition = new SwerveModulePosition(backLeft.getPosition(currentTime),new Rotation2d(backLeft.getTheta()));
+        backRightPosition = new SwerveModulePosition(backRight.getPosition(currentTime), new Rotation2d(backRight.getTheta()));
     }
 
     public static DrivetrainSubsystem getInstance() {

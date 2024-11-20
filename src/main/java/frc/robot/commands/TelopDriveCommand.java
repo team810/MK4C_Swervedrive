@@ -3,7 +3,6 @@ package frc.robot.commands;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotState;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.IO.Controls;
@@ -20,19 +19,15 @@ public class TelopDriveCommand extends Command {
     private final SlewRateLimiter omegaLimiter;
 
     public TelopDriveCommand() {
-        xLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_ACCELERATION, DrivetrainConstants.MAX_ACCELERATION * 2, 0);
-        yLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_ACCELERATION, DrivetrainConstants.MAX_ACCELERATION * 2, 0);
-        omegaLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_ACCELERATION, DrivetrainConstants.MAX_ACCELERATION * 2, 0);
+        xLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_THEORETICAL_ACCELERATION);
+        yLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_THEORETICAL_ACCELERATION);
+        omegaLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_ANGULAR_ACCELERATION);
 
         addRequirements(DrivetrainSubsystem.getInstance());
     }
 
     @Override
     public void execute() {
-        double invert = 1;
-        if (DriverStation.getAlliance().equals(DriverStation.Alliance.Red)) {
-            invert = -1;
-        }
         double verticalVelocity;
         double horizontalVelocity;
         double omegaVelocity;
@@ -41,62 +36,22 @@ public class TelopDriveCommand extends Command {
         verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get();
         omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get(); // CCW position so left positive is good
 
-        horizontalVelocity = MathUtil.applyDeadband(horizontalVelocity,.05);
-        verticalVelocity = MathUtil.applyDeadband(verticalVelocity,.05);
-        omegaVelocity = MathUtil.applyDeadband(omegaVelocity,.05);
+        horizontalVelocity = MathUtil.applyDeadband(horizontalVelocity, .05);
+        verticalVelocity = MathUtil.applyDeadband(verticalVelocity, .05);
+        omegaVelocity = MathUtil.applyDeadband(omegaVelocity, .05);
 
         verticalVelocity = verticalVelocity * DrivetrainConstants.MAX_VELOCITY;
         horizontalVelocity = horizontalVelocity * DrivetrainConstants.MAX_VELOCITY;
         omegaVelocity = omegaVelocity * DrivetrainConstants.MAX_ANGULAR_VELOCITY;
 
-//        verticalVelocity = applyRateLimiting(verticalVelocity,Direction.vertical);
-//        horizontalVelocity = applyRateLimiting(horizontalVelocity,Direction.horizontal);
-//        omegaVelocity = applyRateLimiting(omegaVelocity,Direction.omega);
-
-        verticalVelocity = verticalVelocity * invert;
-        horizontalVelocity = horizontalVelocity * invert;
+        verticalVelocity = xLimiter.calculate(verticalVelocity);
+        horizontalVelocity = yLimiter.calculate(horizontalVelocity);
+        omegaVelocity = omegaLimiter.calculate(omegaVelocity);
 
         ChassisSpeeds targetSpeeds;
         targetSpeeds = new ChassisSpeeds(horizontalVelocity, verticalVelocity, omegaVelocity);
-        targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds,DrivetrainSubsystem.getInstance().getCurrentRotation());
+        targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, DrivetrainSubsystem.getInstance().getPose().getRotation());
         DrivetrainSubsystem.getInstance().setTargetSpeed(targetSpeeds);
-    }
-
-    double applyRateLimiting(double limitedRate, Direction direction)
-    {
-        boolean positive = limitedRate > 0;
-        if (positive)
-        {
-            switch (direction)
-            {
-                case vertical -> {
-                    limitedRate = yLimiter.calculate(limitedRate);
-                }
-                case horizontal -> {
-                    limitedRate = xLimiter.calculate(limitedRate);
-                }
-                case omega -> {
-                    limitedRate = omegaLimiter.calculate(limitedRate);
-                }
-            }
-
-        }else{
-            limitedRate *= -1;
-            switch (direction)
-            {
-                case vertical -> {
-                    limitedRate = yLimiter.calculate(limitedRate);
-                }
-                case horizontal -> {
-                    limitedRate = xLimiter.calculate(limitedRate);
-                }
-                case omega -> {
-                    limitedRate = omegaLimiter.calculate(limitedRate);
-                }
-            }
-            limitedRate *= -1;
-        }
-        return limitedRate;
     }
 
     @Override
@@ -107,11 +62,6 @@ public class TelopDriveCommand extends Command {
 
     @Override
     public void end(boolean interrupted) {
-        DrivetrainSubsystem.getInstance().setTargetSpeed(new ChassisSpeeds(0,0,0));
-    }
-
-    enum Direction
-    {
-        vertical,horizontal,omega
+        DrivetrainSubsystem.getInstance().setTargetSpeed(new ChassisSpeeds(0, 0, 0));
     }
 }

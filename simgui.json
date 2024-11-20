@@ -5,17 +5,14 @@
         "header": {
           "open": true
         }
-      },
-      "Talon FX (v6)[3]": {
-        "header": {
-          "open": true
-        }
       }
     }
   },
   "NTProvider": {
     "types": {
-      "/FMSInfo": "FMSInfo"
+      "/FMSInfo": "FMSInfo",
+      "/Shuffleboard/Robot/Reset Pose Command": "Command",
+      "/Shuffleboard/Robot/Reset Position/Reset Pose Command": "Command"
     }
   },
   "NetworkTables Info": {

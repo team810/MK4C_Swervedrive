@@ -7,82 +7,82 @@ public interface SwerveModuleIO {
     /**
      * @param targetState Sets the target state for the module this should be called periodically. This state is applied in the writePeriodic function so this must be called before that if you want it to be applied
      */
-    public void setTargetState(SwerveModuleState targetState);
+    void setTargetState(SwerveModuleState targetState);
 
-    public void readPeriodic();
+    void readPeriodic();
     /**
      * This should be called periodically after the swerve module state is set
      */
-    public void writePeriodic();
+    void writePeriodic();
 
     /**
      * This should be called in the drivetrain subsystem sim periodic function
      */
-    public void moduleSim();
+    void moduleSim();
 
     /**
      * @param timestamp requires a timestamp that you want the measurement from to get this you can use the:
      *                        Utils.getCurrentTimeSeconds();
      * @return The current distance traveled by the wheel in meters, this should be plugged right into the swerve module position class
      */
-    public double getPosition(double timestamp);
+    double getPosition(double timestamp);
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
      */
-    public double getPosition();
+    double getPosition();
     /**
      * @param timestamp requires a timestamp that you want the measurement from to get this you can use the:
      *                  Utils.getCurrentTimeSeconds();
      * @return The current velocity in meters per second
      */
-    public double getVelocity(double timestamp);
+    double getVelocity(double timestamp);
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
      */
-    public double getVelocity();
+    double getVelocity();
 
     /**
      * @return Current acceleration in meters per second squared
      */
-    public double getAcceleration(double timestamp);
+    double getAcceleration(double timestamp);
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
      */
-    public double getAcceleration();
+    double getAcceleration();
 
     /**
      * @return returns the voltage applied to the drive motor.
      */
-    public double getDriveAppliedVoltage();
+    double getDriveAppliedVoltage();
 
     /**
      * @return This is the current angle the wheel is facing in radians wrapped from -PI to PI
      */
-    public double getTheta();
+    double getTheta();
 
     /**
      * @return This is the current angular velocity of the wheel
      */
-    public double getOmega();
+    double getOmega();
 
     /**
      * @return the horizontal force created by the module
      */
-    public double getForce();
+    double getForce();
 
     /**
      * @return Returns of the spinning wheel
      */
-    public double getTorque();
+    double getTorque();
 
     /**
      * @return returns the voltage applied to the steer motor.
      */
-    public double getSteerAppliedVoltage();
+    double getSteerAppliedVoltage();
 
-    public SwerveModuleState getCurrentState();
+    SwerveModuleState getCurrentState();
 
 }

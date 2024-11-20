@@ -33,9 +33,11 @@ public class DrivetrainConstants {
     public static final double WHEEL_BASE_WIDTH = Units.inchesToMeters(24); // measure of FL wheel to FR wheel or BL wheel to BR wheel
     public static final double WHEEL_BASE_LENGTH = Units.inchesToMeters(24); // measure of FL wheel to BL wheel// or FR wheel to BR wheel
 
-    public static final double STEER_KP = 5; // voltage/radians proportion of volts to error in radians
+    public static final double STEER_KP = 4; // voltage/radians proportion of volts to error in radians
     public static final double STEER_KI = 0;
-    public static  final double STEER_KD = 0;
+    public static final double STEER_KD = 0;
+
+    public static final double YAW_KP = 5; // Radians per second / radians
 
     public static final double STEER_GEAR_RATIO = 12.8;
 
@@ -45,10 +47,16 @@ public class DrivetrainConstants {
     public static final double DRIVE_GEAR_RATIO = 5.36;
     public static final double WHEEL_DIAMETER_INCHES = 4.0;
     public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(WHEEL_DIAMETER_INCHES);
-    public static final double MAX_VELOCITY = 5.5; // Meters per second
-    public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY * (2 * WHEEL_BASE_LENGTH * Math.PI); // Rotations per second
-    public static final double MAX_ACCELERATION = 9.84; // Meters per second squared
-    public static final double MAX_ANGULAR_ACCELERATION = MAX_ACCELERATION / (2 * WHEEL_BASE_LENGTH * Math.PI); // Rotations per second squared
+
+    public static final double MASS = Units.lbsToKilograms(40); // Robot Mass kg
+    public static final double COEFFICIENT_OF_FRICTION = 1.5; //
+    public static final double MAX_TRACTION = (MASS * 9.8) * COEFFICIENT_OF_FRICTION; // Fn * Mu = Max traction in Newtons
+    public static final double MAX_THEORETICAL_ACCELERATION = MAX_TRACTION / MASS; // m/s^2 f=ma f/m = a
+
+    public static final double MAX_VELOCITY = ((MAX_RPM_FOC / 60)/DRIVE_GEAR_RATIO) * (WHEEL_DIAMETER_METERS * Math.PI); // Meters per second
+
+    public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second
+    public static final double MAX_ANGULAR_ACCELERATION = MAX_THEORETICAL_ACCELERATION * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second squared
 
     public static SwerveDriveKinematics getKinematics() {
         return new SwerveDriveKinematics(
@@ -144,7 +152,7 @@ public class DrivetrainConstants {
                 velocityControllerConfig.kP = 0;
                 velocityControllerConfig.kI = 0;
                 velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1224;
+                velocityControllerConfig.kV = 0.1241;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
             }
@@ -152,7 +160,7 @@ public class DrivetrainConstants {
                 velocityControllerConfig.kP = 0;
                 velocityControllerConfig.kI = 0;
                 velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1224;
+                velocityControllerConfig.kV = 0.1241;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
             }
@@ -160,7 +168,7 @@ public class DrivetrainConstants {
                 velocityControllerConfig.kP = 0;
                 velocityControllerConfig.kI = 0;
                 velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1224;
+                velocityControllerConfig.kV = 0.1241;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
             }
@@ -168,7 +176,7 @@ public class DrivetrainConstants {
                 velocityControllerConfig.kP = 0;
                 velocityControllerConfig.kI = 0;
                 velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1224;
+                velocityControllerConfig.kV = 0.1241;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
             }
@@ -181,7 +189,7 @@ public class DrivetrainConstants {
 
         MotionMagicConfigs motionMagicConfigs = new MotionMagicConfigs();
         motionMagicConfigs.MotionMagicCruiseVelocity = DrivetrainConstants.MAX_RPM_FOC;
-        motionMagicConfigs.MotionMagicJerk = MAX_ACCELERATION * .1;
+        motionMagicConfigs.MotionMagicJerk = MAX_THEORETICAL_ACCELERATION * .1;
 
         config.MotionMagic = motionMagicConfigs;
 
