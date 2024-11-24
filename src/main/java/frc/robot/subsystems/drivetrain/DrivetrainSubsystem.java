@@ -61,7 +61,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         gyroSimState = gyro.getSimState();
         thetaSignal = gyro.getYaw();
         gyro.reset();
-        thetaSignal.setUpdateFrequency(100);
+        thetaSignal.setUpdateFrequency(250);
 
         frontLeftPosition = new SwerveModulePosition();
         frontRightPosition = new SwerveModulePosition();
@@ -100,7 +100,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         updateModulePositions();
 
 
-        if (Robot.isReal())
+        if (Robot.isReal() && DrivetrainConstants.UsingVision)
         {
             boolean reject = false;
 

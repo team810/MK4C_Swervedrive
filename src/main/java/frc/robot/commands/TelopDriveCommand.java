@@ -4,10 +4,12 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotState;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.IO.Controls;
 import frc.robot.IO.IO;
+import frc.robot.Superstructure;
 import frc.robot.subsystems.drivetrain.DrivetrainConstants;
 import frc.robot.subsystems.drivetrain.DrivetrainSubsystem;
 
@@ -39,10 +41,10 @@ public class TelopDriveCommand extends Command {
         double horizontalVelocity;
         double invert = 1;
 
-//        if (Superstructure.getInstance().getAlliance() == DriverStation.Alliance.Red)
-//        {
-//            invert = invert * -1;
-//        }
+        if (Superstructure.getInstance().getAlliance() == DriverStation.Alliance.Red)
+        {
+            invert = invert * -1;
+        }
 
         horizontalVelocity = -IO.getJoystickValue(Controls.driveYVelocity).get();
         verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get();
@@ -59,7 +61,7 @@ public class TelopDriveCommand extends Command {
         verticalVelocity = xLimiter.calculate(verticalVelocity);
         horizontalVelocity = yLimiter.calculate(horizontalVelocity);
 
-        if (true) {
+        if (omegaControl) {
             double omegaVelocity;
 
             omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get(); // CCW position so left positive is good
