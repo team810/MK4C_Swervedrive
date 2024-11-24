@@ -41,14 +41,14 @@ public class DrivetrainConstants {
 
     public static final double STEER_GEAR_RATIO = 12.8;
 
-    public static final double MOMENT_OF_INTRA_DRIVE = .00382; // kg * meters^2
+    public static final double MOMENT_OF_INTRA_DRIVE = .025 / (DrivetrainConstants.DRIVE_GEAR_RATIO * DrivetrainConstants.DRIVE_GEAR_RATIO); // kg * meters^2
 
     public static final double MAX_RPM_FOC = 5800;
     public static final double DRIVE_GEAR_RATIO = 5.36;
     public static final double WHEEL_DIAMETER_INCHES = 4.0;
     public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(WHEEL_DIAMETER_INCHES);
 
-    public static final double MASS = Units.lbsToKilograms(40); // Robot Mass kg
+    public static final double MASS = Units.lbsToKilograms(50); // Robot Mass kg
     public static final double COEFFICIENT_OF_FRICTION = 1.5; //
     public static final double MAX_TRACTION = (MASS * 9.8) * COEFFICIENT_OF_FRICTION; // Fn * Mu = Max traction in Newtons
     public static final double MAX_THEORETICAL_ACCELERATION = MAX_TRACTION / MASS; // m/s^2 f=ma f/m = a
@@ -57,6 +57,9 @@ public class DrivetrainConstants {
 
     public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second
     public static final double MAX_ANGULAR_ACCELERATION = MAX_THEORETICAL_ACCELERATION * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second squared
+
+    public static final double MAX_ANGULAR_VELOCITY_ACCEPT_VISION_DATA = 2 * Math.PI; // 1 rotation per second
+    public static final String LimeLightName = "limelight-cam";
 
     public static SwerveDriveKinematics getKinematics() {
         return new SwerveDriveKinematics(
@@ -215,5 +218,4 @@ public class DrivetrainConstants {
 
         return config;
     }
-
 }

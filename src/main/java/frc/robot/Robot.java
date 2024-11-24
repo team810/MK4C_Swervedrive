@@ -13,9 +13,6 @@ import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.IO.Controls;
-import frc.robot.IO.IO;
 import frc.robot.commands.TelopDriveCommand;
 import frc.robot.subsystems.drivetrain.DrivetrainSubsystem;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -24,8 +21,6 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 
 public class Robot extends LoggedRobot {
     public static final double PERIOD = .025;
-
-    private final DriverStation.Alliance alliance = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue);
 
     private final ShuffleboardTab robotTab;
 
@@ -50,9 +45,7 @@ public class Robot extends LoggedRobot {
         Logger.start();
 
         CommandScheduler.getInstance().setPeriod(.015);
-        DrivetrainSubsystem.getInstance();
 
-        IO.Initialize(IO.PrimaryDriverProfiles.Leo,IO.SecondaryDriverProfiles.KnollController);
 
         robotTab = Shuffleboard.getTab("Robot");
         resetPositionLayout = robotTab.getLayout("Reset Position", BuiltInLayouts.kList);
@@ -75,7 +68,8 @@ public class Robot extends LoggedRobot {
     }
     @Override
     public void robotInit() {
-        new Trigger(IO.getButtonValue(Controls.resetGyro)).onTrue(new InstantCommand(() -> DrivetrainSubsystem.getInstance().resetGyro()));
+        Superstructure.getInstance().initialize();
+        Superstructure.getInstance().configureActions();
     }
 
     @Override
@@ -113,14 +107,13 @@ public class Robot extends LoggedRobot {
     
     
     @Override
-    public void disabledInit() {}
+    public void disabledInit() {
+    }
     
     
     @Override
     public void disabledPeriodic() {
-        if (DriverStation.getAlliance().equals(DriverStation.Alliance.Blue != alliance)) {
-            DrivetrainSubsystem.getInstance().switchAlliances();
-        }
+        Superstructure.getInstance().disabledPeriodic();
     }
 
     @Override

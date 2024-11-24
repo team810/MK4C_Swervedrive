@@ -2,7 +2,6 @@ package frc.robot.subsystems.drivetrain;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -105,11 +104,15 @@ public class KrakenNeoModule implements SwerveModuleIO{
         );
         steerController.enableContinuousInput(-Math.PI, Math.PI);
 
-        BaseStatusSignal.setUpdateFrequencyForAll(100,positionSignal,velocitySignal,accelerationSignal,currentSignal,driveAppliedVoltageSignal,thetaSignal,omegaSignal);
+        BaseStatusSignal.setUpdateFrequencyForAll(250,positionSignal,velocitySignal,accelerationSignal,currentSignal,driveAppliedVoltageSignal,thetaSignal,omegaSignal);
+        driveMotor.optimizeBusUtilization();
+        encoder.optimizeBusUtilization();
     }
 
     @Override
     public void readPeriodic() {
+        BaseStatusSignal.refreshAll(positionSignal,velocitySignal,accelerationSignal,thetaSignal,omegaSignal,currentSignal,driveAppliedVoltageSignal);
+
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Position", getPosition());
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Velocity", getVelocity());
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Acceleration", getAcceleration());
@@ -130,9 +133,9 @@ public class KrakenNeoModule implements SwerveModuleIO{
         double velocity = targetState.speedMetersPerSecond;
         double acceleration = 0;
         velocity = (velocity/(DrivetrainConstants.WHEEL_DIAMETER_METERS * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO; // converts mps to rotations of motor per second
-        acceleration = (velocity - ((getVelocity(Utils.getCurrentTimeSeconds())/(DrivetrainConstants.WHEEL_DIAMETER_METERS * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO)) / Robot.PERIOD;
+        acceleration = (velocity - ((getVelocity()/(DrivetrainConstants.WHEEL_DIAMETER_METERS * Math.PI)) * DrivetrainConstants.DRIVE_GEAR_RATIO)) / Robot.PERIOD;
 
-        driveMotorControl = new VelocityVoltage(velocity,acceleration,false,0,0,false,false,false);
+        driveMotorControl = new VelocityVoltage(velocity,acceleration,true,0,0,false,false,false);
         driveMotor.setControl(driveMotorControl);
 
         // Control over steer motor
@@ -149,7 +152,8 @@ public class KrakenNeoModule implements SwerveModuleIO{
     @Override
     public void moduleSim() {
         // Just drive motor
-        driveMotorSim.setInputVoltage(driveAppliedVoltageSignal.getValue());
+
+        driveMotorSim.setInputVoltage(driveSimState.getMotorVoltage());
         driveMotorSim.update(Robot.PERIOD);
 
         driveSimState.setSupplyVoltage(12);
@@ -158,69 +162,40 @@ public class KrakenNeoModule implements SwerveModuleIO{
         driveSimState.setRotorVelocity(driveMotorSim.getAngularVelocityRPM()/60); // Converts RPM to RPS
 
         // Steer Simulation
-        double simOmega = (steerAppliedVoltage / 12) *  ((DrivetrainConstants.MAX_RPM_FOC / 60)/ DrivetrainConstants.STEER_GEAR_RATIO); // rotations per second
+        double simOmega = ((steerAppliedVoltage / 12) *  (DrivetrainConstants.MAX_RPM_FOC / 60)) / DrivetrainConstants.STEER_GEAR_RATIO; // rotations per second
         encoderSimState.setSupplyVoltage(12);
         encoderSimState.setVelocity(simOmega);
+        encoderSimState.addPosition(simOmega * Robot.PERIOD);
     }
 
-    private void updateDriveSignals(double timestamp) {
-        position = 0;
-        velocity = 0;
-        acceleration = 0;
-        double accelerationTimestamp = accelerationSignal.getAllTimestamps().getCANivoreTimestamp().getTime();
-        double velocityTimestamp = velocitySignal.getAllTimestamps().getCANivoreTimestamp().getTime();
-        double positionTimestamp = positionSignal.getAllTimestamps().getCANivoreTimestamp().getTime();
-
-        double velocityAtAcceleration = velocitySignal.getValue() + accelerationSignal.getValue() * (accelerationTimestamp - velocityTimestamp);
-        double xAccelerationTimeDif = accelerationTimestamp - positionTimestamp;
-        double xAtAccelerationTime = positionSignal.getValue() + (velocityAtAcceleration * xAccelerationTimeDif) + (.5 * accelerationSignal.getValue() * xAccelerationTimeDif);
-        double finalTimestamp = timestamp - accelerationTimestamp;
-
-        this.position = xAtAccelerationTime + (velocityAtAcceleration * finalTimestamp) + (.5 * accelerationSignal.getValue() * finalTimestamp);
-        this.position = this.position / DrivetrainConstants.DRIVE_GEAR_RATIO;
-        this.position = this.position * (Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI); // Position is now in meters
-
-        this.velocity = BaseStatusSignal.getLatencyCompensatedValue(velocitySignal,accelerationSignal);
-        this.velocity = this.velocity / DrivetrainConstants.DRIVE_GEAR_RATIO;
-        this.velocity = this.velocity * (Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI); // Position is now in meters
-
-        this.acceleration = accelerationSignal.getValue();
-        this.acceleration = this.acceleration / DrivetrainConstants.DRIVE_GEAR_RATIO;
-        this.acceleration = this.acceleration * (Units.inchesToMeters(DrivetrainConstants.WHEEL_DIAMETER_INCHES) * Math.PI); // Position is now in meters
-
-        this.driveAppliedVoltage = driveAppliedVoltageSignal.getValue();
-    }
-
-    @Override
-    public double getPosition(double timestamp) {
-        updateDriveSignals(timestamp);
-        return position;
-    }
 
     @Override
     public double getPosition() {
+        positionSignal.refresh();
+        velocitySignal.refresh();
+        position = BaseStatusSignal.getLatencyCompensatedValue(positionSignal,velocitySignal);
+        position = position / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        position = position * Math.PI * DrivetrainConstants.WHEEL_DIAMETER_METERS;
         return position;
     }
 
-    @Override
-    public double getVelocity(double timestamp) {
-        updateDriveSignals(timestamp);
-        return velocity;
-    }
 
     @Override
     public double getVelocity() {
+        velocitySignal.refresh();
+        accelerationSignal.refresh();
+        velocity = BaseStatusSignal.getLatencyCompensatedValue(velocitySignal,accelerationSignal);
+        velocity = velocity / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        velocity = velocity * Math.PI * DrivetrainConstants.WHEEL_DIAMETER_METERS;
         return velocity;
-    }
-
-    @Override
-    public double getAcceleration(double timestamp) {
-        updateDriveSignals(timestamp);
-        return acceleration;
     }
 
     @Override
     public double getAcceleration() {
+        accelerationSignal.refresh();
+        acceleration = accelerationSignal.getValue();
+        acceleration = acceleration / DrivetrainConstants.DRIVE_GEAR_RATIO;
+        acceleration = acceleration * Math.PI * DrivetrainConstants.WHEEL_DIAMETER_METERS;
         return acceleration;
     }
 
@@ -239,12 +214,12 @@ public class KrakenNeoModule implements SwerveModuleIO{
 
     @Override
     public double getDriveAppliedVoltage() {
-        return driveAppliedVoltageSignal.getValue();
+        driveAppliedVoltage = driveAppliedVoltageSignal.getValue();
+        return driveAppliedVoltage;
     }
 
     @Override
     public double getTheta() {
-
         thetaSignal.refresh();
         theta = thetaSignal.getValue();
         theta = theta * 2 * Math.PI; // To convert from rotations to radians
