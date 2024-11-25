@@ -9,7 +9,7 @@ public interface SwerveModuleIO {
      */
     void setTargetState(SwerveModuleState targetState);
 
-    void readPeriodic();
+    void readPeriodic(Observer.ModuleObservationRaw observation);
     /**
      * This should be called periodically after the swerve module state is set
      */
@@ -20,33 +20,18 @@ public interface SwerveModuleIO {
      */
     void moduleSim();
 
-    /**
-     * @param timestamp requires a timestamp that you want the measurement from to get this you can use the:
-     *                        Utils.getCurrentTimeSeconds();
-     * @return The current distance traveled by the wheel in meters, this should be plugged right into the swerve module position class
-     */
-    double getPosition(double timestamp);
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
      */
     double getPosition();
-    /**
-     * @param timestamp requires a timestamp that you want the measurement from to get this you can use the:
-     *                  Utils.getCurrentTimeSeconds();
-     * @return The current velocity in meters per second
-     */
-    double getVelocity(double timestamp);
+
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
      */
     double getVelocity();
 
-    /**
-     * @return Current acceleration in meters per second squared
-     */
-    double getAcceleration(double timestamp);
 
     /**
      * @return The value was last updated during the read periodic, if you need at a specific timestamp for odometry use the overload that takes in a timestamp
@@ -85,4 +70,5 @@ public interface SwerveModuleIO {
 
     SwerveModuleState getCurrentState();
 
+    public Observer.ModuleSignals getModuleSignals();
 }

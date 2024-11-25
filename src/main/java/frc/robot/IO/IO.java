@@ -34,6 +34,10 @@ public abstract class IO {
                 controlsJoystick.put(Controls.driveYVelocity, primary::getLeftY);
                 controlsJoystick.put(Controls.driveOmega, primary::getRightX);
 
+                controlsJoystick.put(Controls.driveThetaX, primary::getRightY);
+                controlsJoystick.put(Controls.driveThetaY, primary::getRightX);
+
+                controlsButtons.put(Controls.thetaOmegaToggle, primary::getRightStickButtonPressed);
                 controlsButtons.put(Controls.resetGyro,primary::getAButton);
                 break;
         }
