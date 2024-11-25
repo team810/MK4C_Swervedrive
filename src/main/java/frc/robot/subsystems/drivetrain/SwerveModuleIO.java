@@ -9,7 +9,7 @@ public interface SwerveModuleIO {
      */
     void setTargetState(SwerveModuleState targetState);
 
-    void readPeriodic();
+    void readPeriodic(Observer.ModuleObservationRaw observation);
     /**
      * This should be called periodically after the swerve module state is set
      */
@@ -70,4 +70,5 @@ public interface SwerveModuleIO {
 
     SwerveModuleState getCurrentState();
 
+    public Observer.ModuleSignals getModuleSignals();
 }

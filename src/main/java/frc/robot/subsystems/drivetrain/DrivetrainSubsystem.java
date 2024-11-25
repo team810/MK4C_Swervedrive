@@ -1,7 +1,5 @@
 package frc.robot.subsystems.drivetrain;
 
-import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.sim.Pigeon2SimState;
 import edu.wpi.first.math.MathUtil;
@@ -10,10 +8,7 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.kinematics.*;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.Robot;
@@ -21,6 +16,8 @@ import frc.robot.Superstructure;
 import frc.robot.lib.AdvancedSubsystem;
 import frc.robot.lib.LimelightHelpers;
 import org.littletonrobotics.junction.Logger;
+
+import java.util.ArrayList;
 
 public class DrivetrainSubsystem extends AdvancedSubsystem {
     private static DrivetrainSubsystem instance;
@@ -32,13 +29,8 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
 
     private final Pigeon2 gyro;
     private final Pigeon2SimState gyroSimState;
-    private final StatusSignal<Double> thetaSignal;
 
-    private SwerveModulePosition frontLeftPosition;
-    private SwerveModulePosition frontRightPosition;
-    private SwerveModulePosition backLeftPosition;
-    private SwerveModulePosition backRightPosition;
-
+    private final Observer observer;
     private final SwerveDriveKinematics kinematics;
     private final SwerveDrivePoseEstimator odometry;
 
@@ -59,19 +51,26 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         gyro = new Pigeon2(DrivetrainConstants.GYRO_ID, DrivetrainConstants.CAN_BUS);
         gyro.getConfigurator().apply(DrivetrainConstants.getGyroConfig());
         gyroSimState = gyro.getSimState();
-        thetaSignal = gyro.getYaw();
         gyro.reset();
-        thetaSignal.setUpdateFrequency(250);
 
-        frontLeftPosition = new SwerveModulePosition();
-        frontRightPosition = new SwerveModulePosition();
-        backLeftPosition = new SwerveModulePosition();
-        backRightPosition = new SwerveModulePosition();
+        observer = new Observer(
+                frontLeft.getModuleSignals(),
+                frontRight.getModuleSignals(),
+                backLeft.getModuleSignals(),
+                backRight.getModuleSignals(),
+                gyro.getYaw()
+        );
+        observer.start();
+
         kinematics = DrivetrainConstants.getKinematics();
+
+
+        Observer.SwerveObservation observation = observer.getObservations().get(0);
+        observer.clearObservations();
         odometry = new SwerveDrivePoseEstimator(
                 kinematics,
                 gyro.getRotation2d(),
-                new SwerveModulePosition[]{frontLeftPosition, frontRightPosition, backLeftPosition, backRightPosition},
+                new SwerveModulePosition[]{observation.frontLeft, observation.frontRight, observation.backLeft, observation.backRight},
                 new Pose2d()
         );
 
@@ -86,19 +85,15 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
 
     @Override
     public void readPeriodic() {
-        BaseStatusSignal.refreshAll(thetaSignal);
-        frontLeft.readPeriodic();
-        frontRight.readPeriodic();
-        backLeft.readPeriodic();
-        backRight.readPeriodic();
+        frontLeft.readPeriodic(observer.getModuleObservations(SwerveModuleID.FrontLeft));
+        frontRight.readPeriodic(observer.getModuleObservations(SwerveModuleID.FrontRight));
+        backLeft.readPeriodic(observer.getModuleObservations(SwerveModuleID.BackLeft));
+        backRight.readPeriodic(observer.getModuleObservations(SwerveModuleID.BackRight));
 
         if (Robot.isSimulation())
         {
             gyroSimState.addYaw(Units.radiansToDegrees(kinematics.toChassisSpeeds(frontLeft.getCurrentState(),frontRight.getCurrentState(),backLeft.getCurrentState(),backRight.getCurrentState()).omegaRadiansPerSecond * Robot.PERIOD));
         }
-
-        updateModulePositions();
-
 
         if (Robot.isReal() && DrivetrainConstants.UsingVision)
         {
@@ -126,8 +121,19 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
             }
         }
 
-        odometry.update(Rotation2d.fromDegrees(thetaSignal.getValue()), new SwerveModulePosition[]{frontLeftPosition, frontRightPosition, backLeftPosition, backRightPosition});
-
+        ArrayList<Observer.SwerveObservation> observations = observer.getObservations();
+        for (int i = 0; i < observations.size(); i++) {
+            odometry.updateWithTime(
+                    observations.get(i).timestamp,
+                    observations.get(i).yaw,
+                    new SwerveModulePosition[]{
+                            observations.get(i).frontLeft,
+                            observations.get(i).frontRight,
+                            observations.get(i).backLeft,
+                            observations.get(i).backRight
+                    });
+        }
+        observer.clearObservations();
         Logger.recordOutput("Drivetrain/Current/CurrentState", frontLeft.getCurrentState(), frontRight.getCurrentState(), backLeft.getCurrentState(), backRight.getCurrentState());
         Logger.recordOutput("Drivetrain/Current/CurrentPose", odometry.getEstimatedPosition());
     }
@@ -149,10 +155,10 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
             }
         }
         SwerveModuleState[] states = kinematics.toSwerveModuleStates(targetSpeed);
-//        states[0] = SwerveModuleState.optimize(states[0], new Rotation2d(frontLeft.getTheta()));
-//        states[1] = SwerveModuleState.optimize(states[1], new Rotation2d(frontRight.getTheta()));
-//        states[2] = SwerveModuleState.optimize(states[2], new Rotation2d(backLeft.getTheta()));
-//        states[3] = SwerveModuleState.optimize(states[3], new Rotation2d(backRight.getTheta()));
+        states[0] = SwerveModuleState.optimize(states[0], new Rotation2d(frontLeft.getTheta()));
+        states[1] = SwerveModuleState.optimize(states[1], new Rotation2d(frontRight.getTheta()));
+        states[2] = SwerveModuleState.optimize(states[2], new Rotation2d(backLeft.getTheta()));
+        states[3] = SwerveModuleState.optimize(states[3], new Rotation2d(backRight.getTheta()));
 
         frontLeft.setTargetState(states[0]);
         frontRight.setTargetState(states[1]);
@@ -200,9 +206,9 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
     }
 
     public void resetPose(Pose2d pose) {
-        updateModulePositions();
+        Observer.SwerveObservation observation = observer.getObservations().get(0);
 
-        odometry.resetPosition(gyro.getRotation2d(), new SwerveModulePosition[]{frontLeftPosition, frontRightPosition, backLeftPosition, backRightPosition}, pose);
+        odometry.resetPosition(gyro.getRotation2d(), new SwerveModulePosition[]{observation.frontLeft, observation.frontRight, observation.backLeft, observation.backRight}, pose);
     }
 
     public void setControlMode(ControlMethods control) {
@@ -212,13 +218,6 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
 
     public void setVelocityFOC(ChassisSpeeds targetSpeed) {
         this.velocityFOC = targetSpeed;
-    }
-
-    private void updateModulePositions() {
-        frontLeftPosition = new SwerveModulePosition(frontLeft.getPosition(),new Rotation2d(frontLeft.getTheta()));
-        frontRightPosition = new SwerveModulePosition(frontRight.getPosition(),new Rotation2d(frontRight.getTheta()));
-        backLeftPosition = new SwerveModulePosition(backLeft.getPosition(),new Rotation2d(backLeft.getTheta()));
-        backRightPosition = new SwerveModulePosition(backRight.getPosition(), new Rotation2d(backRight.getTheta()));
     }
 
     public void setVelocityThetaControlFOC(double horizontalSpeed, double verticalSpeed, Rotation2d targetAngle) {
