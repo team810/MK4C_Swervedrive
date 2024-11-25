@@ -59,8 +59,8 @@ public class DrivetrainConstants {
     public static final double MAX_ANGULAR_ACCELERATION = MAX_THEORETICAL_ACCELERATION * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second squared
 
     public static final double MAX_ANGULAR_VELOCITY_ACCEPT_VISION_DATA = 2 * Math.PI; // 1 rotation per second
-    public static final String LimeLightName = "limelight-cam";
-    public static final boolean UsingVision = false;
+    public static final String LIME_LIGHT_NAME = "limelight-cam";
+    public static final boolean USING_VISION = false;
 
     public static SwerveDriveKinematics getKinematics() {
         return new SwerveDriveKinematics(

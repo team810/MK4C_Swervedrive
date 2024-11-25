@@ -64,7 +64,6 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
 
         kinematics = DrivetrainConstants.getKinematics();
 
-
         Observer.SwerveObservation observation = observer.getObservations().get(0);
         observer.clearObservations();
         odometry = new SwerveDrivePoseEstimator(
@@ -80,6 +79,9 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         velocityThetaControlFOC = new VelocityThetaControlFOC();
         controlMethod = ControlMethods.off;
 
+        if (DrivetrainConstants.USING_VISION) {
+            LimelightHelpers.setCameraPose_RobotSpace(DrivetrainConstants.LIME_LIGHT_NAME, 0, Units.inchesToMeters(0),Units.inchesToMeters(0),-4,25,0);
+        }
     }
 
 
@@ -95,12 +97,12 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
             gyroSimState.addYaw(Units.radiansToDegrees(kinematics.toChassisSpeeds(frontLeft.getCurrentState(),frontRight.getCurrentState(),backLeft.getCurrentState(),backRight.getCurrentState()).omegaRadiansPerSecond * Robot.PERIOD));
         }
 
-        if (Robot.isReal() && DrivetrainConstants.UsingVision)
+        if (Robot.isReal() && DrivetrainConstants.USING_VISION)
         {
             boolean reject = false;
 
-            LimelightHelpers.SetRobotOrientation(DrivetrainConstants.LimeLightName, odometry.getEstimatedPosition().getRotation().getDegrees(), gyro.getRate(),0, 0, 0, 0);
-            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(DrivetrainConstants.LimeLightName);
+            LimelightHelpers.SetRobotOrientation(DrivetrainConstants.LIME_LIGHT_NAME, odometry.getEstimatedPosition().getRotation().getDegrees(), gyro.getRate(),0, 0, 0, 0);
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(DrivetrainConstants.LIME_LIGHT_NAME);
 
             if (mt2 != null)
             {
@@ -134,6 +136,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
                     });
         }
         observer.clearObservations();
+
         Logger.recordOutput("Drivetrain/Current/CurrentState", frontLeft.getCurrentState(), frontRight.getCurrentState(), backLeft.getCurrentState(), backRight.getCurrentState());
         Logger.recordOutput("Drivetrain/Current/CurrentPose", odometry.getEstimatedPosition());
     }
@@ -148,7 +151,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
                 targetSpeed = velocityFOC;
             }
             case VelocityRR -> {
-                targetSpeed = new ChassisSpeeds();
+                targetSpeed = velocityRR;
             }
             case VelocityThetaControlFOC -> {
                 targetSpeed = velocityThetaControlFOC.getTargetSpeeds(odometry.getEstimatedPosition().getRotation());
@@ -206,9 +209,13 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
     }
 
     public void resetPose(Pose2d pose) {
-        Observer.SwerveObservation observation = observer.getObservations().get(0);
 
-        odometry.resetPosition(gyro.getRotation2d(), new SwerveModulePosition[]{observation.frontLeft, observation.frontRight, observation.backLeft, observation.backRight}, pose);
+        odometry.resetPosition(gyro.getRotation2d(), new SwerveModulePosition[]{
+                new SwerveModulePosition(frontLeft.getPosition(),Rotation2d.fromRadians(frontLeft.getTheta())),
+                new SwerveModulePosition(frontRight.getPosition(),Rotation2d.fromRadians(frontRight.getTheta())),
+                new SwerveModulePosition(backLeft.getPosition(),Rotation2d.fromRadians(backLeft.getTheta())),
+                new SwerveModulePosition(backRight.getPosition(),Rotation2d.fromRadians(backRight.getTheta()))},
+                pose);
     }
 
     public void setControlMode(ControlMethods control) {
@@ -224,18 +231,27 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         velocityThetaControlFOC.setControl(horizontalSpeed, verticalSpeed, targetAngle);
     }
 
-    private class VelocityThetaControlFOC {
-        private PIDController thetaController = new PIDController(
-                8,
-                0,
-                0
-        );
+    public ChassisSpeeds getVelocityRR() {
+        return velocityRR;
+    }
+
+    public void setVelocityRR(ChassisSpeeds velocityRR) {
+        this.velocityRR = velocityRR;
+    }
+
+    private static class VelocityThetaControlFOC {
+        private final PIDController thetaController;
         private double horizontalSpeed = 0;
         private double verticalSpeed = 0;
         private Rotation2d targetAngle = new Rotation2d();
         private final SlewRateLimiter limiter = new SlewRateLimiter(DrivetrainConstants.MAX_ANGULAR_ACCELERATION);
-        public VelocityThetaControlFOC()
-        {
+
+        public VelocityThetaControlFOC() {
+            thetaController = new PIDController(
+                    8,
+                    0,
+                    0
+            );
             thetaController.enableContinuousInput(-Math.PI, Math.PI);
         }
 

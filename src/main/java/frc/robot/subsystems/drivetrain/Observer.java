@@ -229,7 +229,6 @@ public class Observer extends Thread {
             backLeftObservationLock.readLock().unlock();
             backRightObservationLock.readLock().unlock();
             yawLock.readLock().unlock();
-
         }
     }
 
