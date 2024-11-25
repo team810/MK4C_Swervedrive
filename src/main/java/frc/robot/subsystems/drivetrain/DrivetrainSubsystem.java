@@ -42,6 +42,8 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
 
     private ChassisSpeeds targetSpeed;
 
+    private Pose2d visionPose = new Pose2d();
+
     private DrivetrainSubsystem() {
         frontLeft = new KrakenNeoModule(SwerveModuleID.FrontLeft);
         frontRight = new KrakenNeoModule(SwerveModuleID.FrontRight);
@@ -80,7 +82,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         controlMethod = ControlMethods.off;
 
         if (DrivetrainConstants.USING_VISION) {
-            LimelightHelpers.setCameraPose_RobotSpace(DrivetrainConstants.LIME_LIGHT_NAME, 0, Units.inchesToMeters(0),Units.inchesToMeters(0),-4,25,0);
+            LimelightHelpers.setCameraPose_RobotSpace(DrivetrainConstants.LIME_LIGHT_NAME, Units.inchesToMeters(0), Units.inchesToMeters(-4),Units.inchesToMeters(23),-4,25,0);
         }
     }
 
@@ -116,12 +118,16 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
                 }
                 if(!reject)
                 {
-                    odometry.addVisionMeasurement(
-                            mt2.pose,
-                            mt2.timestampSeconds);
+                    visionPose = mt2.pose;
+                    visionPose = new Pose2d(visionPose.getX(),visionPose.getY(),odometry.getEstimatedPosition().getRotation());
+                    odometry.addVisionMeasurement(visionPose, mt2.timestampSeconds);
                 }
             }
         }
+
+        Logger.recordOutput("VisionPose", visionPose);
+
+
 
         ArrayList<Observer.SwerveObservation> observations = observer.getObservations();
         for (int i = 0; i < observations.size(); i++) {
