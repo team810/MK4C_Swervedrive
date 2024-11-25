@@ -21,21 +21,40 @@ public class TelopDriveCommand extends Command {
     private final SlewRateLimiter yLimiter;
     private final SlewRateLimiter omegaLimiter;
 
-    boolean omegaControl = true;
+    public enum yawControl
+    {
+        omega,
+        rightStick,
+        target,
+    }
+    yawControl control;
 
     public TelopDriveCommand() {
         xLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_THEORETICAL_ACCELERATION);
         yLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_THEORETICAL_ACCELERATION);
         omegaLimiter = new SlewRateLimiter(DrivetrainConstants.MAX_ANGULAR_ACCELERATION);
 
+        control = yawControl.omega;
+
         addRequirements(DrivetrainSubsystem.getInstance());
     }
 
     @Override
     public void execute() {
-        if (IO.getButtonValue(Controls.thetaOmegaToggle).getAsBoolean()) {
-            omegaControl = !omegaControl;
+        if (IO.getButtonValue(Controls.yawLock).getAsBoolean())
+        {
+            control = yawControl.target;
+        }else{
+            if (IO.getButtonValue(Controls.thetaOmegaToggle).getAsBoolean()) {
+                if (control == yawControl.omega)
+                {
+                    control = yawControl.rightStick;
+                }else {
+                    control = yawControl.omega;
+                }
+            }
         }
+
 
         double verticalVelocity;
         double horizontalVelocity;
@@ -46,8 +65,8 @@ public class TelopDriveCommand extends Command {
             invert = invert * -1;
         }
 
-        horizontalVelocity = -IO.getJoystickValue(Controls.driveYVelocity).get();
-        verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get();
+        horizontalVelocity = -IO.getJoystickValue(Controls.driveYVelocity).get() * .4;
+        verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get() * .4;
 
         horizontalVelocity = horizontalVelocity * invert;
         verticalVelocity = verticalVelocity * invert;
@@ -61,30 +80,37 @@ public class TelopDriveCommand extends Command {
         verticalVelocity = xLimiter.calculate(verticalVelocity);
         horizontalVelocity = yLimiter.calculate(horizontalVelocity);
 
-        if (omegaControl) {
-            double omegaVelocity;
+        switch (control)
+        {
+            case omega -> {
+                double omegaVelocity;
 
-            omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get(); // CCW position so left positive is good
-            omegaVelocity = MathUtil.applyDeadband(omegaVelocity, .05);
-            omegaVelocity = omegaVelocity * DrivetrainConstants.MAX_ANGULAR_VELOCITY;
-            omegaVelocity = omegaLimiter.calculate(omegaVelocity);
+                omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get() * .3; // CCW position so left positive is good
+                omegaVelocity = MathUtil.applyDeadband(omegaVelocity, .05);
+                omegaVelocity = omegaVelocity * DrivetrainConstants.MAX_ANGULAR_VELOCITY;
+                omegaVelocity = omegaLimiter.calculate(omegaVelocity);
 
-            ChassisSpeeds targetSpeeds;
-            targetSpeeds = new ChassisSpeeds(horizontalVelocity, verticalVelocity, omegaVelocity);
-            targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, DrivetrainSubsystem.getInstance().getPose().getRotation());
-            DrivetrainSubsystem.getInstance().setControlMode(DrivetrainSubsystem.ControlMethods.VelocityFOC);
-            DrivetrainSubsystem.getInstance().setVelocityFOC(targetSpeeds);
-        }else{
-            DrivetrainSubsystem.getInstance().setControlMode(DrivetrainSubsystem.ControlMethods.VelocityThetaControlFOC);
-            double xThetaInput = -MathUtil.applyDeadband(IO.getJoystickValue(Controls.driveThetaX).get(), .4);
-            double yThetaInput = -MathUtil.applyDeadband(IO.getJoystickValue(Controls.driveThetaY).get(), .4);
-            Rotation2d targetRot = new Rotation2d(xThetaInput,yThetaInput);
-            if (xThetaInput == 0 && yThetaInput == 0)
-            {
-                targetRot = DrivetrainSubsystem.getInstance().getPose().getRotation();
+                ChassisSpeeds targetSpeeds;
+                targetSpeeds = new ChassisSpeeds(horizontalVelocity, verticalVelocity, omegaVelocity);
+                targetSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, DrivetrainSubsystem.getInstance().getPose().getRotation());
+                DrivetrainSubsystem.getInstance().setControlMode(DrivetrainSubsystem.ControlMethods.VelocityFOC);
+                DrivetrainSubsystem.getInstance().setVelocityFOC(targetSpeeds);
             }
+            case rightStick -> {
+                DrivetrainSubsystem.getInstance().setControlMode(DrivetrainSubsystem.ControlMethods.VelocityThetaControlFOC);
+                double xThetaInput = -MathUtil.applyDeadband(IO.getJoystickValue(Controls.driveThetaX).get(), .4);
+                double yThetaInput = -MathUtil.applyDeadband(IO.getJoystickValue(Controls.driveThetaY).get(), .4);
+                Rotation2d targetRot = new Rotation2d(xThetaInput,yThetaInput);
+                if (xThetaInput == 0 && yThetaInput == 0)
+                {
+                    targetRot = DrivetrainSubsystem.getInstance().getPose().getRotation();
+                }
 
-            DrivetrainSubsystem.getInstance().setVelocityThetaControlFOC(horizontalVelocity,verticalVelocity,targetRot);
+                DrivetrainSubsystem.getInstance().setVelocityThetaControlFOC(horizontalVelocity,verticalVelocity,targetRot);
+            }
+            case target -> {
+                
+            }
         }
 
     }

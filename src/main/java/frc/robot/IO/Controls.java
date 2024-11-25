@@ -10,4 +10,6 @@ public enum Controls {
 
     thetaOmegaToggle,
     resetGyro,
+
+    yawLock,
 }
