@@ -152,7 +152,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
 
 
     @Override
-    public synchronized double getPosition() {
+    public double getPosition() {
         position = rawInput.position;
         position = position / DrivetrainConstants.DRIVE_GEAR_RATIO;
         position = position * Math.PI * DrivetrainConstants.WHEEL_DIAMETER_METERS;
@@ -196,7 +196,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
     }
 
     @Override
-    public synchronized double getTheta() {
+    public double getTheta() {
         theta = rawInput.theta;
         theta = theta * 2 * Math.PI; // To convert from rotations to radians
         return theta;

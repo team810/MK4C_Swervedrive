@@ -25,7 +25,7 @@ public class Observer extends Thread {
     private ModuleObservationRaw backLeftObservation;
     private final ReadWriteLock backLeftObservationLock;
     private final ModuleSignals backLeftSignals;
-
+    
     private ModuleObservationRaw backRightObservation;
     private final ReadWriteLock backRightObservationLock;
     private final ModuleSignals backRightSignals;
@@ -115,7 +115,7 @@ public class Observer extends Thread {
         yawSignal = yaw;
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                250,
+                500,
                 frontLeftSignals.positionSignal,
                 frontLeftSignals.velocitySignal,
                 frontLeftSignals.accelerationSignal,

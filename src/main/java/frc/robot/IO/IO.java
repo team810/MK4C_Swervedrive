@@ -39,6 +39,8 @@ public abstract class IO {
 
                 controlsButtons.put(Controls.thetaOmegaToggle, primary::getRightStickButtonPressed);
                 controlsButtons.put(Controls.resetGyro,primary::getAButton);
+
+                controlsButtons.put(Controls.yawLock, () -> primary.getRightTriggerAxis() > .8);
                 break;
         }
 

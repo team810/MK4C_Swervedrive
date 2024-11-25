@@ -60,7 +60,7 @@ public class DrivetrainConstants {
 
     public static final double MAX_ANGULAR_VELOCITY_ACCEPT_VISION_DATA = 2 * Math.PI; // 1 rotation per second
     public static final String LIME_LIGHT_NAME = "limelight-cam";
-    public static final boolean USING_VISION = false;
+    public static final boolean USING_VISION = true;
 
     public static SwerveDriveKinematics getKinematics() {
         return new SwerveDriveKinematics(
