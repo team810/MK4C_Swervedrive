@@ -52,7 +52,7 @@ public class DrivetrainConstants {
     public static final double COEFFICIENT_OF_FRICTION = 1.5; //
     public static final double MAX_TRACTION = (MASS * 9.8) * COEFFICIENT_OF_FRICTION; // Fn * Mu = Max traction in Newtons
     public static final double MAX_THEORETICAL_ACCELERATION = MAX_TRACTION / MASS; // m/s^2 f=ma f/m = a
-
+    // 5.761
     public static final double MAX_VELOCITY = ((MAX_RPM_FOC / 60)/DRIVE_GEAR_RATIO) * (WHEEL_DIAMETER_METERS * Math.PI); // Meters per second
 
     public static final double MAX_ANGULAR_VELOCITY = MAX_VELOCITY * (Math.sqrt((WHEEL_BASE_LENGTH * WHEEL_BASE_LENGTH)+(WHEEL_BASE_WIDTH * WHEEL_BASE_WIDTH)) * Math.PI); // Rotations per second
@@ -61,6 +61,9 @@ public class DrivetrainConstants {
     public static final double MAX_ANGULAR_VELOCITY_ACCEPT_VISION_DATA = 2 * Math.PI; // 1 rotation per second
     public static final String LIME_LIGHT_NAME = "limelight-cam";
     public static final boolean USING_VISION = true;
+
+    public static final double DRIVETRAIN_LENGTH = Units.inchesToMeters(29.5);
+    public static final double DRIVETRAIN_WIDTH = Units.inchesToMeters(29.5);
 
     public static SwerveDriveKinematics getKinematics() {
         return new SwerveDriveKinematics(
@@ -153,36 +156,40 @@ public class DrivetrainConstants {
         switch (module)
         {
             case FrontLeft -> {
-                velocityControllerConfig.kP = 0;
-                velocityControllerConfig.kI = 0;
-                velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1241;
+                velocityControllerConfig.kV = 0.124146;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
+                velocityControllerConfig.kS = .11;
+                velocityControllerConfig.kP = .05;
+                velocityControllerConfig.kI = 0;
+                velocityControllerConfig.kD = 0;
             }
             case FrontRight -> {
-                velocityControllerConfig.kP = 0;
-                velocityControllerConfig.kI = 0;
-                velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1241;
+                velocityControllerConfig.kV = 0.124146;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
+                velocityControllerConfig.kS = .05;
+                velocityControllerConfig.kP = .1;
+                velocityControllerConfig.kI = 0;
+                velocityControllerConfig.kD = 0;
             }
             case BackLeft -> {
-                velocityControllerConfig.kP = 0;
-                velocityControllerConfig.kI = 0;
-                velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1241;
+                velocityControllerConfig.kV = 0.124146;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
+                velocityControllerConfig.kS = .11;
+                velocityControllerConfig.kP = .05;
+                velocityControllerConfig.kI = 0;
+                velocityControllerConfig.kD = 0;
             }
             case BackRight -> {
-                velocityControllerConfig.kP = 0;
-                velocityControllerConfig.kI = 0;
-                velocityControllerConfig.kD = 0;
-                velocityControllerConfig.kV = 0.1241;
+                velocityControllerConfig.kV = 0.124146;
                 velocityControllerConfig.kA = 0;
                 velocityControllerConfig.kG = 0;
+                velocityControllerConfig.kS = .05;
+                velocityControllerConfig.kP = .1;
+                velocityControllerConfig.kI = 0;
+                velocityControllerConfig.kD = 0;
             }
         }
         config.Slot0 = velocityControllerConfig;

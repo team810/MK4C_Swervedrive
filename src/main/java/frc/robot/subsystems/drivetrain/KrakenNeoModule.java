@@ -63,7 +63,7 @@ public class KrakenNeoModule implements SwerveModuleIO{
         steerMotor.clearFaults();
         steerMotor.setSmartCurrentLimit(20); // The steer motor does not really need that much torque, and it is completely fine to run these motors at 20 amps,
         steerMotor.enableVoltageCompensation(12);
-        steerMotor.setIdleMode(CANSparkBase.IdleMode.kCoast);
+        steerMotor.setIdleMode(CANSparkBase.IdleMode.kBrake);
 
         steerAppliedVoltage = 0;
 
@@ -95,10 +95,11 @@ public class KrakenNeoModule implements SwerveModuleIO{
     @Override
     public void readPeriodic(Observer.ModuleObservationRaw data) {
         rawInput = data;
+        Logger.recordOutput("Drivetrain/" + idString + "/" + "VelocityRPS", rawInput.velocity);
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Position", getPosition());
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Velocity", getVelocity());
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Acceleration", getAcceleration());
-        Logger.recordOutput("Drivetrain/" + idString + "/" + "AppliedDriveVoltage", driveAppliedVoltage);
+        Logger.recordOutput("Drivetrain/" + idString + "/" + "AppliedDriveVoltage", rawInput.appliedVoltage);
         Logger.recordOutput("Drivetrain/" + idString + "/" + "DriveCurrent", rawInput.current);
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Force", getForce());
         Logger.recordOutput("Drivetrain/" + idString + "/" + "Torque", getTorque());

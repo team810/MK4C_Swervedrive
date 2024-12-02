@@ -14,20 +14,18 @@ public class Observer extends Thread {
     private final ArrayList<SwerveObservation> observations;
     private final ReadWriteLock observationsLock;
 
+    private final ReadWriteLock moduleObservationLock;
+
     private ModuleObservationRaw frontLeftObservation;
-    private final ReadWriteLock frontLeftObservationLock;
     private final ModuleSignals frontLeftSignals;
 
     private ModuleObservationRaw frontRightObservation;
-    private final ReadWriteLock frontRightObservationLock;
     private final ModuleSignals frontRightSignals;
 
     private ModuleObservationRaw backLeftObservation;
-    private final ReadWriteLock backLeftObservationLock;
     private final ModuleSignals backLeftSignals;
-    
+
     private ModuleObservationRaw backRightObservation;
-    private final ReadWriteLock backRightObservationLock;
     private final ModuleSignals backRightSignals;
 
     private final ReadWriteLock yawLock;
@@ -95,27 +93,25 @@ public class Observer extends Thread {
         observations.add(new SwerveObservation(new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new Rotation2d(0),0));
         observationsLock.writeLock().unlock();
 
-        frontLeftObservationLock = new ReentrantReadWriteLock();
+        moduleObservationLock = new ReentrantReadWriteLock();
+
         frontLeftObservation = new ModuleObservationRaw();
         frontLeftSignals = frontLeft;
 
-        frontRightObservationLock = new ReentrantReadWriteLock();
         frontRightObservation = new ModuleObservationRaw();
         frontRightSignals = frontRight;
 
-        backLeftObservationLock = new ReentrantReadWriteLock();
         backLeftObservation = new ModuleObservationRaw();
         backLeftSignals = backLeft;
 
-        backRightObservationLock = new ReentrantReadWriteLock();
         backRightObservation = new ModuleObservationRaw();
         backRightSignals = backRight;
 
         yawLock = new ReentrantReadWriteLock();
         yawSignal = yaw;
-
+        // The can bus is at 50% usage at 500 hz, should be able to go up to 800
         BaseStatusSignal.setUpdateFrequencyForAll(
-                500,
+                400,
                 frontLeftSignals.positionSignal,
                 frontLeftSignals.velocitySignal,
                 frontLeftSignals.accelerationSignal,
@@ -189,27 +185,17 @@ public class Observer extends Thread {
 
                     yawSignal
             );
-            frontLeftObservationLock.writeLock().lock();
+            moduleObservationLock.writeLock().lock();
+
             frontLeftObservation = SignalExtract(frontLeftSignals);
-            frontLeftObservationLock.writeLock().unlock();
-
-            frontRightObservationLock.writeLock().lock();
             frontRightObservation = SignalExtract(frontRightSignals);
-            frontRightObservationLock.writeLock().unlock();
-
-            backLeftObservationLock.writeLock().lock();
             backLeftObservation = SignalExtract(backLeftSignals);
-            backLeftObservationLock.writeLock().unlock();
-
-            backRightObservationLock.writeLock().lock();
             backRightObservation = SignalExtract(backRightSignals);
-            backRightObservationLock.writeLock().unlock();
+
+            moduleObservationLock.writeLock().unlock();
 
             observationsLock.writeLock().lock();
-            frontLeftObservationLock.readLock().lock();
-            frontRightObservationLock.readLock().lock();
-            backLeftObservationLock.readLock().lock();
-            backRightObservationLock.readLock().lock();
+            moduleObservationLock.readLock().lock();
             yawLock.readLock().lock();
 
             observations.add(
@@ -224,30 +210,24 @@ public class Observer extends Thread {
             );
 
             observationsLock.writeLock().unlock();
-            frontLeftObservationLock.readLock().unlock();
-            frontRightObservationLock.readLock().unlock();
-            backLeftObservationLock.readLock().unlock();
-            backRightObservationLock.readLock().unlock();
+            moduleObservationLock.readLock().unlock();
             yawLock.readLock().unlock();
         }
     }
 
-    public ModuleObservationRaw SignalExtract(ModuleSignals signals)
-    {
+    public ModuleObservationRaw SignalExtract(ModuleSignals signals) {
         ModuleObservationRaw raw = new ModuleObservationRaw();
-        raw.position = signals.positionSignal.getValue();
-        raw.velocity = signals.velocitySignal.getValue();
+        raw.position = StatusSignal.getLatencyCompensatedValue(signals.positionSignal,signals.velocitySignal);
+        raw.velocity = StatusSignal.getLatencyCompensatedValue(signals.velocitySignal,signals.accelerationSignal);
         raw.acceleration = signals.accelerationSignal.getValue();
         raw.current = signals.currentSignal.getValue();
         raw.appliedVoltage = signals.appliedVoltageSignal.getValue();
-        raw.theta = signals.thetaSignal.getValue();
+        raw.theta = StatusSignal.getLatencyCompensatedValue(signals.thetaSignal, signals.omegaSignal);
         raw.omega = signals.omegaSignal.getValue();
         return raw;
     }
 
-    public ArrayList<SwerveObservation> getObservations()
-    {
-
+    public ArrayList<SwerveObservation> getObservations() {
         observationsLock.readLock().lock();
         ArrayList<SwerveObservation> data = observations;
         observationsLock.readLock().unlock();
@@ -255,40 +235,18 @@ public class Observer extends Thread {
         return data;
     }
 
-    public void clearObservations()
-    {
+    public void clearObservations() {
         observationsLock.writeLock().lock();
         observations.clear();
         observationsLock.writeLock().unlock();
     }
 
 
-    public ModuleObservationRaw getModuleObservations(SwerveModuleID id) {
-        ModuleObservationRaw observation = new ModuleObservationRaw();
-        switch (id)
-        {
-            case FrontLeft -> {
-                frontLeftObservationLock.readLock().lock();
-                observation = frontLeftObservation;
-                frontLeftObservationLock.readLock().unlock();
-            }
-            case FrontRight -> {
-                frontRightObservationLock.readLock().lock();
-                observation = frontRightObservation;
-                frontRightObservationLock.readLock().unlock();
-            }
-            case BackLeft -> {
-                backLeftObservationLock.readLock().lock();
-                observation = backLeftObservation;
-                backLeftObservationLock.readLock().unlock();
-            }
-            case BackRight -> {
-                backRightObservationLock.readLock().lock();
-                observation = backRightObservation;
-                backRightObservationLock.readLock().unlock();
-            }
-        }
-        return observation;
+    public ModuleObservationRaw[] getModuleObservations() {
+        moduleObservationLock.readLock().lock();
+        var moduleObservations =  new ModuleObservationRaw[]{frontLeftObservation, frontRightObservation, backLeftObservation, backRightObservation};
+        moduleObservationLock.readLock().unlock();
+        return moduleObservations;
     }
 
     public double getYaw() {

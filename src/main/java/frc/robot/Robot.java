@@ -10,10 +10,12 @@ import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardContainer;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.commands.TelopDriveCommand;
+import frc.robot.subsystems.drivetrain.DrivetrainConstants;
 import frc.robot.subsystems.drivetrain.DrivetrainSubsystem;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
@@ -25,6 +27,14 @@ public class Robot extends LoggedRobot {
     private final ShuffleboardTab robotTab;
 
     private final ShuffleboardContainer resetPositionLayout;
+    public enum OriginOptions {
+        backRightCorner,
+        backLeftCorner,
+        frontLeftCorner,
+        frontRightCorner,
+        center
+    }
+    private SendableChooser<OriginOptions> originChooser;
     private final GenericEntry xPositionEntry;
     private final GenericEntry yPositionEntry;
     private final GenericEntry thetaEntry;
@@ -54,13 +64,48 @@ public class Robot extends LoggedRobot {
         yPositionEntry = resetPositionLayout.add("Y Position", 0).getEntry();
         thetaEntry = resetPositionLayout.add("Theta", 0).getEntry();
 
-        resetPoseCommand = new InstantCommand(()->{
+        originChooser = new SendableChooser<OriginOptions>();
+        resetPositionLayout.add(originChooser);
+        originChooser.setDefaultOption("Center", OriginOptions.center);
+        originChooser.addOption("BackRightCorner", OriginOptions.backRightCorner);
+        originChooser.addOption("BackLeftCorner", OriginOptions.backLeftCorner);
+        originChooser.addOption("FrontLeftCorner", OriginOptions.frontLeftCorner);
+        originChooser.addOption("FrontRightCorner", OriginOptions.frontRightCorner);
+
+        resetPoseCommand = new InstantCommand(()-> {
+            double xPosition = xPositionEntry.getDouble(0);
+            double yPosition = yPositionEntry.getDouble(0);
+            Rotation2d theta = Rotation2d.fromDegrees(thetaEntry.getDouble(0));
+            switch (originChooser.getSelected())
+            {
+                case backRightCorner -> {
+                    xPosition = xPosition + (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                    yPosition = yPosition + (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                }
+                case backLeftCorner -> {
+                    xPosition = xPosition + (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                    yPosition = yPosition - (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                }
+                case frontLeftCorner -> {
+                    xPosition = xPosition - (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                    yPosition = yPosition - (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                }
+                case frontRightCorner -> {
+                    xPosition = xPosition - (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                    yPosition = yPosition + (DrivetrainConstants.DRIVETRAIN_LENGTH/2);
+                }
+                case center -> {
+                    xPosition = xPosition; // Do not change
+                    yPosition = yPosition; // Do not change
+                }
+            }
+
             DrivetrainSubsystem.getInstance().resetPose(
-                    new Pose2d(
-                        xPositionEntry.getDouble(0),
-                        yPositionEntry.getDouble(0),
-                        Rotation2d.fromRadians(thetaEntry.getDouble(0))
-                    )
+                new Pose2d(
+                    xPosition,
+                    yPosition,
+                    theta
+                )
             );
         });
 
@@ -80,7 +125,6 @@ public class Robot extends LoggedRobot {
     }
 
     public void readPeriodic() {
-        Logger.recordOutput("Reset Pose", new Pose2d(xPositionEntry.getDouble(0),yPositionEntry.getDouble(0),Rotation2d.fromRadians(thetaEntry.getDouble(0))));
         DrivetrainSubsystem.getInstance().readPeriodic();
     }
 
@@ -113,6 +157,7 @@ public class Robot extends LoggedRobot {
     
     @Override
     public void disabledPeriodic() {
+        Logger.recordOutput("Reset Pose", new Pose2d(xPositionEntry.getDouble(0),yPositionEntry.getDouble(0),Rotation2d.fromRadians(thetaEntry.getDouble(0))));
         Superstructure.getInstance().disabledPeriodic();
     }
 
