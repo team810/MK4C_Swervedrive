@@ -12,7 +12,15 @@
     "types": {
       "/FMSInfo": "FMSInfo",
       "/Shuffleboard/Robot/Reset Pose Command": "Command",
-      "/Shuffleboard/Robot/Reset Position/Reset Pose Command": "Command"
+      "/Shuffleboard/Robot/Reset Position/Reset Pose Command": "Command",
+      "/Shuffleboard/Robot/Reset Position/SendableChooser[0]": "String Chooser"
+    }
+  },
+  "NetworkTables": {
+    "transitory": {
+      "limelight-cam": {
+        "open": true
+      }
     }
   },
   "NetworkTables Info": {

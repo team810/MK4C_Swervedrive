@@ -37,7 +37,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
     // Any speeds that come in are either going to be robot relative or fully filed relative
     private ChassisSpeeds velocityFOC;
     private ChassisSpeeds velocityRR;
-    private VelocityThetaControlFOC velocityThetaControlFOC;
+    private final VelocityThetaControlFOC velocityThetaControlFOC;
     private ControlMethods controlMethod;
 
     private ChassisSpeeds targetSpeed;
@@ -82,17 +82,20 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
         controlMethod = ControlMethods.off;
 
         if (DrivetrainConstants.USING_VISION) {
-            LimelightHelpers.setCameraPose_RobotSpace(DrivetrainConstants.LIME_LIGHT_NAME, Units.inchesToMeters(0), Units.inchesToMeters(-4),Units.inchesToMeters(23),-4,25,0);
+            // Change the camera pose relative to robot center (x forward, y left, z up, degrees)
+
+            LimelightHelpers.setCameraPose_RobotSpace(DrivetrainConstants.LIME_LIGHT_NAME, Units.inchesToMeters(14.75), Units.inchesToMeters(4),Units.inchesToMeters(23),-4,25,0);
         }
     }
 
 
     @Override
     public void readPeriodic() {
-        frontLeft.readPeriodic(observer.getModuleObservations(SwerveModuleID.FrontLeft));
-        frontRight.readPeriodic(observer.getModuleObservations(SwerveModuleID.FrontRight));
-        backLeft.readPeriodic(observer.getModuleObservations(SwerveModuleID.BackLeft));
-        backRight.readPeriodic(observer.getModuleObservations(SwerveModuleID.BackRight));
+        var moduleObservations = observer.getModuleObservations();
+        frontLeft.readPeriodic(moduleObservations[0]);
+        frontRight.readPeriodic(moduleObservations[1]);
+        backLeft.readPeriodic(moduleObservations[2]);
+        backRight.readPeriodic(moduleObservations[3]);
 
         if (Robot.isSimulation())
         {
@@ -104,7 +107,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
             boolean reject = false;
 
             LimelightHelpers.SetRobotOrientation(DrivetrainConstants.LIME_LIGHT_NAME, odometry.getEstimatedPosition().getRotation().getDegrees(), gyro.getRate(),0, 0, 0, 0);
-            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(DrivetrainConstants.LIME_LIGHT_NAME);
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue(DrivetrainConstants.LIME_LIGHT_NAME);
 
             if (mt2 != null)
             {
@@ -119,7 +122,6 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
                 if(!reject)
                 {
                     visionPose = mt2.pose;
-                    visionPose = new Pose2d(visionPose.getX(),visionPose.getY(),odometry.getEstimatedPosition().getRotation());
                     odometry.addVisionMeasurement(visionPose, mt2.timestampSeconds);
                 }
             }
@@ -142,6 +144,7 @@ public class DrivetrainSubsystem extends AdvancedSubsystem {
                     });
         }
         observer.clearObservations();
+
 
         Logger.recordOutput("Drivetrain/Current/CurrentState", frontLeft.getCurrentState(), frontRight.getCurrentState(), backLeft.getCurrentState(), backRight.getCurrentState());
         Logger.recordOutput("Drivetrain/Current/CurrentPose", odometry.getEstimatedPosition());

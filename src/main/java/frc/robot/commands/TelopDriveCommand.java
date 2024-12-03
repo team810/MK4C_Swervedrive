@@ -65,8 +65,8 @@ public class TelopDriveCommand extends Command {
             invert = invert * -1;
         }
 
-        horizontalVelocity = -IO.getJoystickValue(Controls.driveYVelocity).get() * .4;
-        verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get() * .4;
+        horizontalVelocity = -IO.getJoystickValue(Controls.driveYVelocity).get();
+        verticalVelocity = -IO.getJoystickValue(Controls.driveXVelocity).get();
 
         horizontalVelocity = horizontalVelocity * invert;
         verticalVelocity = verticalVelocity * invert;
@@ -85,7 +85,7 @@ public class TelopDriveCommand extends Command {
             case omega -> {
                 double omegaVelocity;
 
-                omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get() * .3; // CCW position so left positive is good
+                omegaVelocity = -IO.getJoystickValue(Controls.driveOmega).get(); // CCW position so left positive is good
                 omegaVelocity = MathUtil.applyDeadband(omegaVelocity, .05);
                 omegaVelocity = omegaVelocity * DrivetrainConstants.MAX_ANGULAR_VELOCITY;
                 omegaVelocity = omegaLimiter.calculate(omegaVelocity);
